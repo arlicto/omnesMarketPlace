@@ -47,7 +47,7 @@
     <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
     <a href="index.html">Home</a>
     <a href="browse.html">Browse</a>
-    <a href="product.html">Product</a>
+    <a href="notifications.html">Alerts</a>
     <a href="cart.html">Cart</a>
     <a href="add_product.html">Add Product</a>
     <a id="navLogin" href="login.html">Login</a>
@@ -90,7 +90,8 @@
         }
 
         if (!id) {
-          box.innerHTML = "<p>Open this page with a product id, for example: product.html?id=1</p>";
+          box.innerHTML =
+            "<p>Open a product from <a href='browse.html'>Browse</a> or the home page.</p>";
           return;
         }
         var product = null;
