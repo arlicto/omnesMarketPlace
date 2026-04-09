@@ -2,8 +2,17 @@
 header("Content-Type: application/json");
 include "db.php";
 
-// this gets all unsold products from database
-$sql = "SELECT * FROM products WHERE is_sold=0 ORDER BY id DESC";
+// optional filter: ?category=rare | high-end | regular
+$allowed_category = ["rare", "high-end", "regular"];
+$cat = isset($_GET["category"]) ? trim($_GET["category"]) : "";
+
+$sql = "SELECT * FROM products WHERE is_sold=0";
+if ($cat !== "" && in_array($cat, $allowed_category, true)) {
+    $c = $conn->real_escape_string($cat);
+    $sql .= " AND category='$c'";
+}
+$sql .= " ORDER BY id DESC";
+
 $result = $conn->query($sql);
 
 $products = [];
