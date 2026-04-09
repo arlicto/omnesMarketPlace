@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omnes MarketPlace - Product</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    nav { background: #1f4fd6; padding: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    nav a { color: white; text-decoration: none; margin-right: 12px; font-size: 16px; }
+    .logo { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; background: white; }
+    .authRight { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .box { max-width: 700px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; }
+    /* dynamic image style: show full image without cutting */
+    img { width: 100%; height: auto; max-height: 500px; object-fit: contain; border-radius: 6px; background: #f7f7f7; }
+    .btn { background: #2d6cdf; color: white; border: 0; padding: 8px 10px; border-radius: 4px; cursor: pointer; }
+    .slider { position: relative; margin-bottom: 10px; }
+    .slider img { transition: opacity 0.5s ease; opacity: 1; }
+    .slideBtns { margin-top: 8px; display: flex; gap: 8px; }
+    .videoBox { margin-top: 12px; }
+    video { width: 100%; max-height: 400px; border-radius: 6px; background: #000; }
+    .nbox { margin-top: 16px; padding: 12px; border: 1px solid #ddd; border-radius: 6px; }
+    input { padding: 8px; width: 180px; margin-right: 8px; }
+    .small { font-size: 13px; color: #444; }
+  
+
+    @media (max-width: 768px) {
+      nav { padding: 10px; gap: 8px; }
+      nav a { font-size: 14px; margin-right: 8px; }
+      .logo, .brand img { width: 32px !important; height: 32px !important; }
+      .authRight { width: 100%; justify-content: flex-end; }
+
+      .container, .wrap, .box { width: auto; margin: 12px; padding: 14px; }
+      .cards { gap: 10px; }
+      .card { width: 100% !important; box-sizing: border-box; }
+
+      input, select, textarea, button, .btn { width: 100%; box-sizing: border-box; }
+      .row, .heroActions, .slideBtns { flex-direction: column; }
+
+      #cartBadge { margin-left: 0 !important; }
+    }
+
+  </style>
+</head>
+<body>
+  <nav>
+    <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
+    <a href="index.html">Home</a>
+    <a href="browse.html">Browse</a>
+    <a href="product.html">Product</a>
+    <a href="cart.html">Cart</a>
+    <a href="add_product.html">Add Product</a>
+    <a id="navLogin" href="login.html">Login</a>
+    <a id="navRegister" href="register.html">Register</a>
+    <span class="authRight">
+      <a id="navLogout" href="#" onclick="logoutUser()" style="display:none;">Logout</a>
+      <span id="navUser" style="display:none; color:white; font-size:16px;">Hi, User</span>
+    </span>
+  </nav>
+
+  <div class="box" id="productBox">
+    <h2>Product Details</h2>
+    <p>Loading product...</p>
+  </div>
+
+  <script>
+    // this updates the cart badge count from localStorage
+    function updateCartBadge() {
+      var cart = JSON.parse(localStorage.getItem("cart")) || [];
+      var badge = document.getElementById("cartBadge");
+      if (badge) {
+        badge.innerText = "Cart: " + cart.length;
+      }
+    }
+
+    updateCartBadge();
+
+    // this gets product id from url
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get("id");
+
+    // this gets all products and shows one product by id
+    fetch("../backend/get_products.php")
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        var box = document.getElementById("productBox");
+        if (!data.success || data.products.length === 0) {
+          box.innerHTML = "<p>No product found.</p>";
+          return;
+        }
+
+        if (!id) {
+          box.innerHTML = "<p>Open this page with a product id, for example: product.html?id=1</p>";
+          return;
+        }
+        var product = null;
+        for (var i = 0; i < data.products.length; i++) {
+          if (String(data.products[i].id) === String(id)) {
+            product = data.products[i];
+          }
+        }
+        if (!product) {
+          box.innerHTML = "<p>Product not found for this id.</p>";
+          return;
+        }
+
+        box.innerHTML =
+          "<h2>" + product.name + "</h2>" +
+          "<div class='slider'>" +
+            "<img id='mainProductImage' src='' alt='product'>" +
+            "<div class='slideBtns'>" +
+              "<button class='btn' id='prevSlideBtn'>Prev</button>" +
+              "<button class='btn' id='nextSlideBtn'>Next</button>" +
+            "</div>" +
+          "</div>" +
+          "<div id='videoBox' class='videoBox'></div>" +
+          "<p>" + product.description + "</p>" +
+          "<p><b>Price:</b> €" + product.price + "</p>" +
+          "<button class='btn' id='addBtn'>Add to Cart</button>" +
+          "<button class='btn' id='deleteBtn' style='display:none; background:#d9534f; margin-left:8px;'>Delete Product (Admin)</button>" +
+          "<div class='nbox'>" +
+            "<h3>Seller-Buyer Negotiation</h3>" +
+            "<p class='small'>After starting, use DM chat page for counter offers.</p>" +
+            "<p id='negStatus'>Status: No negotiation yet</p>" +
+            "<p id='negOffer'>Last Offer: -</p>" +
+            "<p id='negRound'>Rounds: 0 / 5</p>" +
+            "<p id='negNotice' class='small'></p>" +
+            "<button class='btn' id='openChatBtn' style='display:none; margin-bottom:10px;'>Open Negotiation Chat</button>" +
+
+            "<div id='buyerArea'>" +
+              "<input type='number' step='0.01' id='offerPrice' placeholder='Enter your offer price'>" +
+              "<button class='btn' id='sendOfferBtn'>Send Offer</button>" +
+            "</div>" +
+            "<div id='sellerArea' style='display:none; margin-top:10px;'>" +
+              "<p class='small'>Seller can pick any buyer negotiation below.</p>" +
+              "<div id='sellerNegotiationList'></div>" +
+            "</div>" +
+          "</div>";
+
+        document.getElementById("addBtn").onclick = function() {
+          // this stores product in localStorage cart
+          var cart = JSON.parse(localStorage.getItem("cart")) || [];
+          cart.push(product);
+          localStorage.setItem("cart", JSON.stringify(cart));
+          updateCartBadge();
+          alert("Product added to cart");
+        };
+
+        // this prepares image list for slider
+        var imageList = [];
+        if (product.images && product.images.trim() !== "") {
+          imageList = product.images.split(",").map(function(x) { return x.trim(); }).filter(function(x) { return x !== ""; });
+        }
+        if (imageList.length === 0 && product.image) {
+          imageList.push(product.image);
+        }
+        if (imageList.length === 0) {
+          imageList.push("https://via.placeholder.com/700x400?text=No+Image");
+        }
+
+        var currentSlide = 0;
+        var mainImg = document.getElementById("mainProductImage");
+
+        // this renders current slide image
+        function showSlide(i) {
+          if (i < 0) { i = imageList.length - 1; }
+          if (i >= imageList.length) { i = 0; }
+          currentSlide = i;
+          mainImg.style.opacity = 0.2;
+          setTimeout(function() {
+            mainImg.src = imageList[currentSlide];
+            mainImg.style.opacity = 1;
+          }, 120);
+        }
+
+        showSlide(0);
+
+        // this moves slider manually
+        document.getElementById("prevSlideBtn").onclick = function() {
+          showSlide(currentSlide - 1);
+        };
+        document.getElementById("nextSlideBtn").onclick = function() {
+          showSlide(currentSlide + 1);
+        };
+
+        // this auto slides images smoothly
+        var intervalId;
+        if (imageList.length > 1) {
+          intervalId = setInterval(function() {
+            showSlide(currentSlide + 1);
+          }, 3000);
+
+          // pause on hover
+          mainImg.addEventListener('mouseenter', function() {
+            clearInterval(intervalId);
+          });
+          mainImg.addEventListener('mouseleave', function() {
+            intervalId = setInterval(function() {
+              showSlide(currentSlide + 1);
+            }, 3000);
+          });
+        }
+
+        // this shows one product video if available
+        if (product.video && product.video.trim() !== "") {
+          document.getElementById("videoBox").innerHTML =
+            "<h3>Product Video</h3>" +
+            "<video controls>" +
+              "<source src='" + product.video + "'>" +
+            "</video>";
+        }
+
+        // simple demo user values
+        var buyerId = localStorage.getItem("user_id") || 1;
+        var sellerId = 2; // simple fixed seller id for beginner project
+        var isLoggedIn = localStorage.getItem("user_id") ? true : false;
+        var userRole = isLoggedIn ? (localStorage.getItem("user_role") || "buyer") : "buyer";
+        var role = userRole;
+        // keep URL support for seller demo if needed
+        if (params.get("role") === "seller") {
+          role = "seller";
+        }
+        var currentNegotiationId = "";
+
+        // admin should not see negotiation (only buyer and seller)
+        if (isLoggedIn && userRole === "admin") {
+          // this shows admin delete button
+          document.getElementById("deleteBtn").style.display = "inline-block";
+
+          // this lets admin delete current product
+          document.getElementById("deleteBtn").onclick = function() {
+            var ok = confirm("Delete this product?");
+            if (!ok) {
+              return;
+            }
+
+            var form = new FormData();
+            form.append("product_id", product.id);
+
+            fetch("../backend/delete_product.php", {
+              method: "POST",
+              body: form
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(r) {
+              alert(r.message);
+              if (r.success) {
+                location.href = "browse.html";
+              }
+            });
+          };
+
+          document.querySelector(".nbox").innerHTML =
+            "<h3>Seller-Buyer Negotiation</h3><p class='small'>Only buyer and seller can use negotiation.</p>";
+          return;
+        }
+
+        // show seller area when role is seller
+        if (role === "seller") {
+          document.getElementById("buyerArea").style.display = "none";
+          document.getElementById("sellerArea").style.display = "block";
+          document.getElementById("openChatBtn").style.display = "none";
+        }
+
+        // this loads all buyer negotiations for seller view
+        function loadSellerNegotiations() {
+          fetch("../backend/get_product_negotiations.php?product_id=" + product.id)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+              var list = document.getElementById("sellerNegotiationList");
+              if (!list) {
+                return;
+              }
+
+              if (!data.success || !data.negotiations || data.negotiations.length === 0) {
+                list.innerHTML = "<p class='small'>No buyer negotiations yet.</p>";
+                return;
+              }
+
+              list.innerHTML = "";
+              data.negotiations.forEach(function(n) {
+                var row = document.createElement("div");
+                row.style.border = "1px solid #ddd";
+                row.style.padding = "8px";
+                row.style.marginBottom = "8px";
+                row.style.borderRadius = "6px";
+                row.innerHTML =
+                  "<p class='small'><b>Buyer ID:</b> " + n.buyer_id + " | <b>Status:</b> " + n.status + " | <b>Offer:</b> €" + n.offer_price + " | <b>Round:</b> " + n.round + "/5</p>" +
+                  "<button class='btn' onclick='openSellerChat(" + n.id + ")'>Open Chat</button>";
+                list.appendChild(row);
+              });
+            });
+        }
+
+        // this opens selected buyer negotiation chat
+        window.openSellerChat = function(negotiationId) {
+          location.href = "negotiation.html?negotiation_id=" + negotiationId;
+        };
+
+        // this loads current negotiation status
+        function loadNegotiation() {
+          var url = "../backend/get_negotiation.php?product_id=" + product.id;
+          // buyer sees their own negotiation, seller sees latest for product
+          if (role !== "seller") {
+            url = url + "&buyer_id=" + buyerId;
+          }
+
+          fetch(url)
+            .then(function(res) { return res.json(); })
+            .then(function(n) {
+              if (!n.success || !n.negotiation) {
+                document.getElementById("negStatus").innerText = "Status: No negotiation yet";
+                document.getElementById("negOffer").innerText = "Last Offer: -";
+                document.getElementById("negRound").innerText = "Rounds: 0 / 5";
+                return;
+              }
+
+              currentNegotiationId = n.negotiation.id;
+              document.getElementById("negStatus").innerText = "Status: " + n.negotiation.status;
+              document.getElementById("negOffer").innerText = "Last Offer: €" + n.negotiation.offer_price;
+              document.getElementById("negRound").innerText = "Rounds: " + n.negotiation.round + " / 5";
+              document.getElementById("openChatBtn").style.display = "inline-block";
+
+              // disable send button if max rounds reached
+              if (n.negotiation.round >= 5 && n.negotiation.status === "pending") {
+                document.getElementById("sendOfferBtn").disabled = true;
+                document.getElementById("sendOfferBtn").innerText = "Max rounds reached";
+              } else {
+                document.getElementById("sendOfferBtn").disabled = false;
+                document.getElementById("sendOfferBtn").innerText = "Send Offer";
+              }
+              var notice = document.getElementById("negNotice");
+              notice.innerText = "";
+              notice.innerHTML = "";
+
+              // show calm inline messages instead of noisy alerts
+              if (n.negotiation.status === "accepted") {
+                if (role === "buyer") {
+                  // one-time notice key so refresh does not keep re-alerting
+                  var keyA = "neg_notice_" + currentNegotiationId + "_accepted";
+                  if (!sessionStorage.getItem(keyA)) {
+                    notice.innerText = "Offer accepted. Please continue to checkout.";
+                    sessionStorage.setItem(keyA, "1");
+                  } else {
+                    notice.innerText = "Offer accepted. Continue to checkout when ready.";
+                  }
+                  notice.innerHTML += " <button class='btn' id='goCheckoutBtn' style='margin-left:8px;'>Go to Checkout</button>";
+                  document.getElementById("goCheckoutBtn").onclick = function() {
+                    location.href = "checkout.html?product_id=" + product.id + "&negotiation_id=" + currentNegotiationId + "&offer=" + n.negotiation.offer_price;
+                  };
+                  return;
+                }
+                notice.innerText = "Deal completed. Buyer can proceed to checkout.";
+              }
+              if (n.negotiation.status === "rejected") {
+                var keyR = "neg_notice_" + currentNegotiationId + "_rejected";
+                if (!sessionStorage.getItem(keyR)) {
+                  notice.innerText = "Negotiation failed.";
+                  sessionStorage.setItem(keyR, "1");
+                } else {
+                  notice.innerText = "This negotiation is already rejected.";
+                }
+              }
+            });
+        }
+
+        if (role === "seller") {
+          loadSellerNegotiations();
+        } else {
+          loadNegotiation();
+        }
+
+        // this sends offer to server
+        document.getElementById("sendOfferBtn").onclick = function() {
+          var offer = document.getElementById("offerPrice").value;
+          if (!offer) {
+            alert("Enter offer price");
+            return;
+          }
+
+          var form = new FormData();
+          form.append("product_id", product.id);
+          form.append("buyer_id", buyerId);
+          form.append("seller_id", sellerId);
+          form.append("offer_price", offer);
+
+          fetch("../backend/start_negotiation.php", {
+            method: "POST",
+            body: form
+          })
+          .then(function(res) { return res.json(); })
+          .then(function(r) {
+            alert(r.message);
+            if (r.success && r.negotiation_id) {
+              location.href = "negotiation.html?negotiation_id=" + r.negotiation_id;
+              return;
+            }
+            loadNegotiation();
+          });
+        };
+
+        // this opens separate DM-like negotiation page
+        document.getElementById("openChatBtn").onclick = function() {
+          if (!currentNegotiationId) {
+            alert("No negotiation started yet");
+            return;
+          }
+          location.href = "negotiation.html?negotiation_id=" + currentNegotiationId;
+        };
+      });
+  </script>
+
+  <script>
+    // this updates nav links based on login state
+    function renderAuthNav() {
+      var userId = localStorage.getItem("user_id");
+      var userName = localStorage.getItem("user_name") || "User";
+      var loginLink = document.getElementById("navLogin");
+      var registerLink = document.getElementById("navRegister");
+      var logoutLink = document.getElementById("navLogout");
+      var userText = document.getElementById("navUser");
+
+      if (!loginLink || !registerLink || !logoutLink || !userText) {
+        return;
+      }
+
+      if (userId) {
+        loginLink.style.display = "none";
+        registerLink.style.display = "none";
+        logoutLink.style.display = "inline";
+        userText.style.display = "inline";
+        userText.innerText = "Hi, " + userName;
+      } else {
+        loginLink.style.display = "inline";
+        registerLink.style.display = "inline";
+        logoutLink.style.display = "none";
+        userText.style.display = "none";
+      }
+    }
+
+    // this logs user out
+    function logoutUser() {
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("user_role");
+      alert("Logged out");
+      location.href = "index.html";
+    }
+
+    renderAuthNav();
+  </script>
+
+</body>
+</html>
