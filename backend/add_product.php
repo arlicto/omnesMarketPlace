@@ -6,6 +6,13 @@ include "auth.php";
 require_login();
 require_role(["admin", "seller"]);
 
+$post_user_id = $_POST["user_id"] ?? "";
+$session_uid = (string)($_SESSION["user_id"] ?? "");
+if ($post_user_id !== "" && (string)$post_user_id !== $session_uid) {
+    echo json_encode(["success" => false, "message" => "Session does not match submitted user_id"]);
+    exit;
+}
+
 // basic input reading
 $name = $_POST["name"] ?? "";
 $description = $_POST["description"] ?? "";
@@ -38,9 +45,12 @@ if ($image == "" && $images != "") {
     $image = trim($img_parts[0]);
 }
 
+// owner for negotiation routing (logged-in admin or seller)
+$seller_id = $session_uid;
+
 // this inserts new product
-$sql = "INSERT INTO products (name, description, price, image, images, video, category, sale_type)
-        VALUES ('$name', '$description', '$price', '$image', '$images', '$video', '$category', '$sale_type')";
+$sql = "INSERT INTO products (name, description, price, image, images, video, category, sale_type, seller_id)
+        VALUES ('$name', '$description', '$price', '$image', '$images', '$video', '$category', '$sale_type', '$seller_id')";
 
 if ($conn->query($sql)) {
     echo json_encode(["success" => true, "message" => "Product added"]);
