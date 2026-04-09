@@ -17,11 +17,18 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 // this checks user by email
-$sql = "SELECT id, name, email, role, password FROM users WHERE email='$email' LIMIT 1";
-$result = $conn->query($sql);
+$stmt = $conn->prepare("SELECT id, name, email, role, password FROM users WHERE email = ? LIMIT 1");
+if (!$stmt) {
+    echo json_encode(["success" => false, "message" => "Database error"]);
+    exit;
+}
+$stmt->bind_param("s", $email);
+$stmt->execute();
+$result = $stmt->get_result();
 
 if ($result->num_rows > 0) {
     $user = $result->fetch_assoc();
+    $stmt->close();
     $ok = false;
 
     // supports secure hashes and old plain text rows
@@ -31,7 +38,12 @@ if ($result->num_rows > 0) {
         $ok = true;
         // optional migration: convert old plain text to hash after login
         $new_hash = password_hash($password, PASSWORD_DEFAULT);
-        $conn->query("UPDATE users SET password='$new_hash' WHERE id='" . $user["id"] . "'");
+        $update_stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+        if ($update_stmt) {
+            $update_stmt->bind_param("si", $new_hash, $user["id"]);
+            $update_stmt->execute();
+            $update_stmt->close();
+        }
     }
 
     if ($ok) {
@@ -45,6 +57,7 @@ if ($result->num_rows > 0) {
         echo json_encode(["success" => false, "message" => "Invalid email or password"]);
     }
 } else {
+    $stmt->close();
     echo json_encode(["success" => false, "message" => "Invalid email or password"]);
 }
 ?>

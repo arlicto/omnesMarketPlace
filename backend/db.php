@@ -3,11 +3,21 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// Use localhost so mysqli can connect using MySQL's local socket auth (common on Linux).
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db_name = "omnes_marketplace";
+// Use environment variables for DB credentials
+$host = getenv("DB_HOST") ?: "localhost";
+$user = getenv("DB_USER");
+$pass = getenv("DB_PASS");
+$db_name = getenv("DB_NAME");
+
+// Validate required environment variables
+if ($user === false || $pass === false || $db_name === false) {
+    header("Content-Type: application/json");
+    echo json_encode([
+        "success" => false,
+        "message" => "Database configuration error: Missing environment variables (DB_USER, DB_PASS, DB_NAME)"
+    ]);
+    exit;
+}
 
 $conn = new mysqli($host, $user, $pass, $db_name);
 

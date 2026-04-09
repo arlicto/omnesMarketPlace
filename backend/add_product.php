@@ -39,12 +39,17 @@ if ($image == "" && $images != "") {
 }
 
 // this inserts new product
-$sql = "INSERT INTO products (name, description, price, image, images, video, category, sale_type)
-        VALUES ('$name', '$description', '$price', '$image', '$images', '$video', '$category', '$sale_type')";
+$stmt = $conn->prepare("INSERT INTO products (name, description, price, image, images, video, category, sale_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+if (!$stmt) {
+    echo json_encode(["success" => false, "message" => "Failed to add product"]);
+    exit;
+}
+$stmt->bind_param("ssssssss", $name, $description, $price, $image, $images, $video, $category, $sale_type);
 
-if ($conn->query($sql)) {
+if ($stmt->execute() && $stmt->affected_rows > 0) {
     echo json_encode(["success" => true, "message" => "Product added"]);
 } else {
     echo json_encode(["success" => false, "message" => "Failed to add product"]);
 }
+$stmt->close();
 ?>

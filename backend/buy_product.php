@@ -28,13 +28,21 @@ if ($negotiation_id != "") {
         exit;
     }
 
-    $n_sql = "SELECT * FROM negotiations WHERE id='$negotiation_id' LIMIT 1";
-    $n_res = $conn->query($n_sql);
+    $n_stmt = $conn->prepare("SELECT * FROM negotiations WHERE id=? LIMIT 1");
+    if (!$n_stmt) {
+        echo json_encode(["success" => false, "message" => "Database error"]);
+        exit;
+    }
+    $n_stmt->bind_param("i", $negotiation_id);
+    $n_stmt->execute();
+    $n_res = $n_stmt->get_result();
     if ($n_res->num_rows == 0) {
+        $n_stmt->close();
         echo json_encode(["success" => false, "message" => "Negotiation not found"]);
         exit;
     }
     $neg = $n_res->fetch_assoc();
+    $n_stmt->close();
 
     if ((string)$neg["buyer_id"] !== (string)$user_id) {
         echo json_encode(["success" => false, "message" => "This negotiation does not belong to you"]);
@@ -51,12 +59,21 @@ if ($negotiation_id != "") {
 }
 
 // check product exists
-$check_product = $conn->query("SELECT id, is_sold, sale_type FROM products WHERE id='$product_id' LIMIT 1");
+$check_stmt = $conn->prepare("SELECT id, is_sold, sale_type FROM products WHERE id=? LIMIT 1");
+if (!$check_stmt) {
+    echo json_encode(["success" => false, "message" => "Database error"]);
+    exit;
+}
+$check_stmt->bind_param("i", $product_id);
+$check_stmt->execute();
+$check_product = $check_stmt->get_result();
 if ($check_product->num_rows == 0) {
+    $check_stmt->close();
     echo json_encode(["success" => false, "message" => "Product not found"]);
     exit;
 }
 $product_row = $check_product->fetch_assoc();
+$check_stmt->close();
 if ((int)$product_row["is_sold"] === 1) {
     echo json_encode(["success" => false, "message" => "Product already sold"]);
     exit;
@@ -71,48 +88,97 @@ if ($product_row["sale_type"] === "negotiation") {
 }
 
 // avoid duplicate purchase/cart rows
-$dup = $conn->query("SELECT id FROM cart WHERE user_id='$user_id' AND product_id='$product_id' LIMIT 1");
+$dup_stmt = $conn->prepare("SELECT id FROM cart WHERE user_id=? AND product_id=? LIMIT 1");
+if (!$dup_stmt) {
+    echo json_encode(["success" => false, "message" => "Database error"]);
+    exit;
+}
+$dup_stmt->bind_param("ii", $user_id, $product_id);
+$dup_stmt->execute();
+$dup = $dup_stmt->get_result();
 if ($dup->num_rows > 0) {
+    $dup_stmt->close();
     echo json_encode(["success" => true, "message" => "Already purchased in demo cart"]);
     exit;
 }
+$dup_stmt->close();
 
 // this stores buy/cart info in database
-$sql = "INSERT INTO cart (user_id, product_id) VALUES ('$user_id', '$product_id')";
+$cart_stmt = $conn->prepare("INSERT INTO cart (user_id, product_id) VALUES (?, ?)");
+if (!$cart_stmt) {
+    echo json_encode(["success" => false, "message" => "Database error"]);
+    exit;
+}
+$cart_stmt->bind_param("ii", $user_id, $product_id);
 
-if ($conn->query($sql)) {
-    $final_price = "NULL";
+if ($cart_stmt->execute()) {
+    $cart_stmt->close();
+
+    $final_price = null;
     if ($negotiation_id != "") {
-        $np = $conn->query("SELECT offer_price FROM negotiations WHERE id='$negotiation_id' LIMIT 1");
-        if ($np->num_rows > 0) {
-            $npr = $np->fetch_assoc();
-            $final_price = "'" . $npr["offer_price"] . "'";
+        $np_stmt = $conn->prepare("SELECT offer_price FROM negotiations WHERE id=? LIMIT 1");
+        if ($np_stmt) {
+            $np_stmt->bind_param("i", $negotiation_id);
+            $np_stmt->execute();
+            $np = $np_stmt->get_result();
+            if ($np->num_rows > 0) {
+                $npr = $np->fetch_assoc();
+                $final_price = $npr["offer_price"];
+            }
+            $np_stmt->close();
         }
     }
 
     // this stores final order record
-    $order_sql = "INSERT INTO orders (user_id, product_id, final_price, negotiation_id)
-                  VALUES ('$user_id', '$product_id', $final_price, " . ($negotiation_id != "" ? "'$negotiation_id'" : "NULL") . ")";
-    $order_ok = $conn->query($order_sql);
+    $order_stmt = $conn->prepare("INSERT INTO orders (user_id, product_id, final_price, negotiation_id) VALUES (?, ?, ?, ?)");
+    if (!$order_stmt) {
+        echo json_encode(["success" => false, "message" => "Order could not be created"]);
+        exit;
+    }
+    $neg_id_val = ($negotiation_id != "") ? $negotiation_id : null;
+    $order_stmt->bind_param("iisi", $user_id, $product_id, $final_price, $neg_id_val);
+    $order_ok = $order_stmt->execute();
+    $order_stmt->close();
     if (!$order_ok) {
         echo json_encode(["success" => false, "message" => "Order could not be created"]);
         exit;
     }
 
     // mark product as sold after successful purchase
-    $conn->query("UPDATE products SET is_sold=1 WHERE id='$product_id'");
+    $sold_stmt = $conn->prepare("UPDATE products SET is_sold=1 WHERE id=?");
+    if ($sold_stmt) {
+        $sold_stmt->bind_param("i", $product_id);
+        $sold_stmt->execute();
+        $sold_stmt->close();
+    }
 
     // keep chosen negotiation accepted and close others
     if ($negotiation_id != "") {
-        $conn->query("UPDATE negotiations SET status='accepted' WHERE id='$negotiation_id'");
-        $conn->query("UPDATE negotiations SET status='rejected' WHERE product_id='$product_id' AND id!='$negotiation_id' AND status IN ('pending','countered')");
+        $acc_stmt = $conn->prepare("UPDATE negotiations SET status='accepted' WHERE id=?");
+        if ($acc_stmt) {
+            $acc_stmt->bind_param("i", $negotiation_id);
+            $acc_stmt->execute();
+            $acc_stmt->close();
+        }
+        $rej_stmt = $conn->prepare("UPDATE negotiations SET status='rejected' WHERE product_id=? AND id!=? AND status IN ('pending','countered')");
+        if ($rej_stmt) {
+            $rej_stmt->bind_param("ii", $product_id, $negotiation_id);
+            $rej_stmt->execute();
+            $rej_stmt->close();
+        }
     } else {
         // direct buy closes all open negotiations for this product
-        $conn->query("UPDATE negotiations SET status='rejected' WHERE product_id='$product_id' AND status IN ('pending','countered')");
+        $rej_all_stmt = $conn->prepare("UPDATE negotiations SET status='rejected' WHERE product_id=? AND status IN ('pending','countered')");
+        if ($rej_all_stmt) {
+            $rej_all_stmt->bind_param("i", $product_id);
+            $rej_all_stmt->execute();
+            $rej_all_stmt->close();
+        }
     }
 
     echo json_encode(["success" => true, "message" => "Purchase successful (demo only). Product marked as sold."]);
 } else {
+    $cart_stmt->close();
     echo json_encode(["success" => false, "message" => "Could not complete purchase"]);
 }
 ?>

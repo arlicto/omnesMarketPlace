@@ -10,13 +10,20 @@ if ($product_id == "") {
     exit;
 }
 
-$sql = "SELECT * FROM negotiations WHERE product_id='$product_id' ORDER BY id DESC";
-$result = $conn->query($sql);
+$stmt = $conn->prepare("SELECT * FROM negotiations WHERE product_id = ? ORDER BY id DESC");
+if (!$stmt) {
+    echo json_encode(["success" => false, "message" => "Database error"]);
+    exit;
+}
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$result = $stmt->get_result();
 
 $items = [];
 while ($row = $result->fetch_assoc()) {
     $items[] = $row;
 }
+$stmt->close();
 
 echo json_encode([
     "success" => true,

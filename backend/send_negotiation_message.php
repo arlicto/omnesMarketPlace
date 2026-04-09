@@ -23,22 +23,37 @@ if (!is_numeric($negotiation_id)) {
 }
 
 // this gets negotiation first
-$get_sql = "SELECT * FROM negotiations WHERE id='$negotiation_id' LIMIT 1";
-$res = $conn->query($get_sql);
+$get_stmt = $conn->prepare("SELECT * FROM negotiations WHERE id = ? LIMIT 1");
+if (!$get_stmt) {
+    echo json_encode(["success" => false, "message" => "Database error"]);
+    exit;
+}
+$get_stmt->bind_param("i", $negotiation_id);
+$get_stmt->execute();
+$res = $get_stmt->get_result();
 if ($res->num_rows == 0) {
+    $get_stmt->close();
     echo json_encode(["success" => false, "message" => "Negotiation not found"]);
     exit;
 }
 $neg = $res->fetch_assoc();
+$get_stmt->close();
 
 // stop negotiation actions if product already sold
-$p_res = $conn->query("SELECT id, is_sold FROM products WHERE id='" . $neg["product_id"] . "' LIMIT 1");
-if ($p_res->num_rows > 0) {
-    $p = $p_res->fetch_assoc();
-    if ((int)$p["is_sold"] === 1) {
-        echo json_encode(["success" => false, "message" => "Product already sold. Negotiation closed."]);
-        exit;
+$p_stmt = $conn->prepare("SELECT id, is_sold FROM products WHERE id = ? LIMIT 1");
+if ($p_stmt) {
+    $p_stmt->bind_param("i", $neg["product_id"]);
+    $p_stmt->execute();
+    $p_res = $p_stmt->get_result();
+    if ($p_res->num_rows > 0) {
+        $p = $p_res->fetch_assoc();
+        if ((int)$p["is_sold"] === 1) {
+            $p_stmt->close();
+            echo json_encode(["success" => false, "message" => "Product already sold. Negotiation closed."]);
+            exit;
+        }
     }
+    $p_stmt->close();
 }
 
 // only seller/buyer from this negotiation (or admin) can send
@@ -80,15 +95,24 @@ if ($action == "counter") {
         exit;
     }
 
-    $up_sql = "UPDATE negotiations
-               SET offer_price='$offer_price', status='countered', round='$new_round'
-               WHERE id='$negotiation_id'";
-    $conn->query($up_sql);
+    $up_stmt = $conn->prepare("UPDATE negotiations SET offer_price = ?, status = 'countered', round = ? WHERE id = ?");
+    if (!$up_stmt) {
+        echo json_encode(["success" => false, "message" => "Database error"]);
+        exit;
+    }
+    $up_stmt->bind_param("sii", $offer_price, $new_round, $negotiation_id);
+    $up_stmt->execute();
+    $up_stmt->close();
 
     $msg_text = $message != "" ? $message : "Counter offer sent";
-    $msg_sql = "INSERT INTO negotiation_messages (negotiation_id, sender_role, message, offer_price, action)
-                VALUES ('$negotiation_id', '$sender_role', '$msg_text', '$offer_price', 'counter')";
-    $conn->query($msg_sql);
+    $msg_stmt = $conn->prepare("INSERT INTO negotiation_messages (negotiation_id, sender_role, message, offer_price, action) VALUES (?, ?, ?, ?, 'counter')");
+    if (!$msg_stmt) {
+        echo json_encode(["success" => false, "message" => "Database error"]);
+        exit;
+    }
+    $msg_stmt->bind_param("isss", $negotiation_id, $sender_role, $msg_text, $offer_price);
+    $msg_stmt->execute();
+    $msg_stmt->close();
 
     echo json_encode(["success" => true, "message" => "Counter sent", "round" => $new_round, "status" => "countered"]);
     exit;
@@ -99,11 +123,25 @@ if ($action == "accept") {
         echo json_encode(["success" => false, "message" => "Only seller can accept"]);
         exit;
     }
-    $conn->query("UPDATE negotiations SET status='accepted' WHERE id='$negotiation_id'");
-    $conn->query("UPDATE products SET is_sold=1 WHERE id='" . $neg["product_id"] . "'");
+    $acc_stmt = $conn->prepare("UPDATE negotiations SET status='accepted' WHERE id = ?");
+    if ($acc_stmt) {
+        $acc_stmt->bind_param("i", $negotiation_id);
+        $acc_stmt->execute();
+        $acc_stmt->close();
+    }
+    $prod_stmt = $conn->prepare("UPDATE products SET is_sold=1 WHERE id = ?");
+    if ($prod_stmt) {
+        $prod_stmt->bind_param("i", $neg["product_id"]);
+        $prod_stmt->execute();
+        $prod_stmt->close();
+    }
     $msg_text = $message != "" ? $message : "Offer accepted";
-    $conn->query("INSERT INTO negotiation_messages (negotiation_id, sender_role, message, offer_price, action)
-                  VALUES ('$negotiation_id', '$sender_role', '$msg_text', '" . $neg["offer_price"] . "', 'accept')");
+    $msg_acc_stmt = $conn->prepare("INSERT INTO negotiation_messages (negotiation_id, sender_role, message, offer_price, action) VALUES (?, ?, ?, ?, 'accept')");
+    if ($msg_acc_stmt) {
+        $msg_acc_stmt->bind_param("isss", $negotiation_id, $sender_role, $msg_text, $neg["offer_price"]);
+        $msg_acc_stmt->execute();
+        $msg_acc_stmt->close();
+    }
     echo json_encode(["success" => true, "message" => "Deal completed", "status" => "accepted"]);
     exit;
 }
@@ -113,10 +151,19 @@ if ($action == "reject") {
         echo json_encode(["success" => false, "message" => "Only seller can reject"]);
         exit;
     }
-    $conn->query("UPDATE negotiations SET status='rejected' WHERE id='$negotiation_id'");
+    $rej_stmt = $conn->prepare("UPDATE negotiations SET status='rejected' WHERE id = ?");
+    if ($rej_stmt) {
+        $rej_stmt->bind_param("i", $negotiation_id);
+        $rej_stmt->execute();
+        $rej_stmt->close();
+    }
     $msg_text = $message != "" ? $message : "Offer rejected";
-    $conn->query("INSERT INTO negotiation_messages (negotiation_id, sender_role, message, offer_price, action)
-                  VALUES ('$negotiation_id', '$sender_role', '$msg_text', '" . $neg["offer_price"] . "', 'reject')");
+    $msg_rej_stmt = $conn->prepare("INSERT INTO negotiation_messages (negotiation_id, sender_role, message, offer_price, action) VALUES (?, ?, ?, ?, 'reject')");
+    if ($msg_rej_stmt) {
+        $msg_rej_stmt->bind_param("isss", $negotiation_id, $sender_role, $msg_text, $neg["offer_price"]);
+        $msg_rej_stmt->execute();
+        $msg_rej_stmt->close();
+    }
     echo json_encode(["success" => true, "message" => "Negotiation failed", "status" => "rejected"]);
     exit;
 }
