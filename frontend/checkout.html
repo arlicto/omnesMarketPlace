@@ -63,8 +63,8 @@
 
     if (!userId) {
       alert("Please login first");
-      location.href = "login.html";
-    }
+      location.replace("login.html");
+    } else {
 
     // validate product id from url
     if (!productId || isNaN(Number(productId)) || !negotiationId || isNaN(Number(negotiationId))) {
@@ -160,6 +160,9 @@
         return;
       }
 
+      payBtn.disabled = true;
+      document.getElementById("msg").innerText = "Processing payment...";
+
       var fd = new FormData();
       fd.append("product_id", productId);
       fd.append("negotiation_id", negotiationId);
@@ -168,15 +171,31 @@
         method: "POST",
         body: fd
       })
-      .then(function(res) { return res.json(); })
-      .then(function(r) {
-        document.getElementById("msg").innerText = r.message;
-        if (r.success) {
+      .then(function(res) {
+        return res.json().then(function(r) {
+          return { ok: res.ok, r: r };
+        });
+      })
+      .then(function(out) {
+        var r = out.r;
+        document.getElementById("msg").innerText = (r && r.message) ? r.message : "";
+        if (out.ok && r && r.success) {
           alert("Payment done. Order placed.");
-          location.href = "index.html";
+          location.replace("index.html");
+          return;
+        }
+        payBtn.disabled = false;
+      })
+      .catch(function(err) {
+        document.getElementById("msg").innerText = "Network error: could not complete payment.";
+        payBtn.disabled = false;
+        if (typeof console !== "undefined" && console.error) {
+          console.error(err);
         }
       });
     };
+
+    }
   </script>
 
   <script>
