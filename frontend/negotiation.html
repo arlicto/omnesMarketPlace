@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Negotiation Chat</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    nav { background: #1f4fd6; padding: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    nav a { color: white; text-decoration: none; margin-right: 12px; font-size: 16px; }
+    .logo { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; background: white; }
+    .authRight { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .box { max-width: 900px; margin: 20px auto; background: white; padding: 16px; border-radius: 8px; }
+    .chat { border: 1px solid #ddd; border-radius: 8px; padding: 10px; height: 320px; overflow-y: auto; background: #fafafa; }
+    .msg { margin: 8px 0; padding: 8px; border-radius: 6px; max-width: 75%; }
+    .buyer { background: #dbeafe; margin-right: auto; }
+    .seller { background: #dcfce7; margin-left: auto; }
+    .admin { background: #f3e8ff; margin-left: auto; }
+    .meta { font-size: 12px; color: #555; margin-bottom: 4px; }
+    .controls { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    input, textarea, button { padding: 8px; }
+    textarea { width: 100%; box-sizing: border-box; }
+    .offerInput { width: 180px; }
+    .status { margin: 10px 0; }
+
+    @media (max-width: 768px) {
+      nav { padding: 10px; gap: 8px; }
+      nav a { font-size: 14px; margin-right: 8px; }
+      .logo { width: 32px; height: 32px; }
+      .authRight { width: 100%; justify-content: flex-end; }
+      .box { margin: 12px; }
+      .msg { max-width: 100%; }
+      .controls { flex-direction: column; }
+      .offerInput, button { width: 100%; box-sizing: border-box; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
+    <a href="index.html">Home</a>
+    <a href="browse.html">Browse</a>
+    <a href="product.html">Product</a>
+    <a href="cart.html">Cart</a>
+    <a href="add_product.html">Add Product</a>
+    <a id="navLogin" href="login.html">Login</a>
+    <a id="navRegister" href="register.html">Register</a>
+    <span class="authRight">
+      <a id="navLogout" href="#" onclick="logoutUser()" style="display:none;">Logout</a>
+      <span id="navUser" style="display:none; color:white; font-size:16px;">Hi, User</span>
+    </span>
+  </nav>
+
+  <div class="box">
+    <h2>Negotiation Chat</h2>
+    <p id="statusText" class="status">Status: Loading...</p>
+    <p id="roundText" class="status">Round: -</p>
+    <p id="offerText" class="status">Current Offer: -</p>
+
+    <div id="chatBox" class="chat"></div>
+
+    <div class="controls">
+      <input type="number" step="0.01" id="offerPrice" class="offerInput" placeholder="Counter offer price">
+      <button id="counterBtn">Send Counter</button>
+      <button id="acceptBtn">Accept</button>
+      <button id="rejectBtn">Reject</button>
+    </div>
+    <textarea id="msgText" rows="3" placeholder="Write a short message (optional)"></textarea>
+  </div>
+
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    var negotiationId = params.get("negotiation_id");
+    var userRole = localStorage.getItem("user_role") || "buyer";
+    var alreadyRedirectedToCheckout = false;
+
+    // this loads negotiation info and all messages
+    function loadChat() {
+      if (!negotiationId) {
+        document.getElementById("statusText").innerText = "Status: Missing negotiation id";
+        return;
+      }
+
+      fetch("../backend/get_negotiation_messages.php?negotiation_id=" + negotiationId)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (!data.success) {
+            document.getElementById("statusText").innerText = "Status: " + data.message;
+            return;
+          }
+
+          var n = data.negotiation;
+          document.getElementById("statusText").innerText = "Status: " + n.status;
+          document.getElementById("roundText").innerText = "Round: " + n.round + " / 5";
+          document.getElementById("offerText").innerText = "Current Offer: €" + n.offer_price;
+
+          // if accepted, buyer goes to checkout page
+          if (n.status === "accepted" && userRole === "buyer" && !alreadyRedirectedToCheckout) {
+            alreadyRedirectedToCheckout = true;
+            alert("Offer accepted. Moving to checkout.");
+            location.href = "checkout.html?product_id=" + n.product_id + "&negotiation_id=" + n.id + "&offer=" + n.offer_price;
+            return;
+          }
+
+          var box = document.getElementById("chatBox");
+          box.innerHTML = "";
+          data.messages.forEach(function(m) {
+            var cls = "buyer";
+            if (m.sender_role === "seller") { cls = "seller"; }
+            if (m.sender_role === "admin") { cls = "admin"; }
+
+            var text = m.message ? m.message : "";
+            var line = "";
+            if (m.offer_price) {
+              line = "Offer: €" + m.offer_price;
+            }
+
+            var div = document.createElement("div");
+            div.className = "msg " + cls;
+            div.innerHTML =
+              "<div class='meta'>" + m.sender_role + " • " + m.action + "</div>" +
+              "<div>" + text + "</div>" +
+              "<div class='meta'>" + line + "</div>";
+            box.appendChild(div);
+          });
+          box.scrollTop = box.scrollHeight;
+
+          // if closed, disable actions
+          var closed = (n.status === "accepted" || n.status === "rejected");
+          document.getElementById("counterBtn").disabled = closed;
+          document.getElementById("acceptBtn").disabled = closed;
+          document.getElementById("rejectBtn").disabled = closed;
+          document.getElementById("offerPrice").disabled = closed;
+          document.getElementById("msgText").disabled = closed;
+        });
+    }
+
+    // this sends chat action to backend
+    function sendAction(action) {
+      var fd = new FormData();
+      fd.append("negotiation_id", negotiationId);
+      fd.append("sender_role", userRole);
+      fd.append("action", action);
+      fd.append("offer_price", document.getElementById("offerPrice").value);
+      fd.append("message", document.getElementById("msgText").value);
+
+      fetch("../backend/send_negotiation_message.php", {
+        method: "POST",
+        body: fd
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(r) {
+        alert(r.message);
+        document.getElementById("msgText").value = "";
+        loadChat();
+      });
+    }
+
+    document.getElementById("counterBtn").onclick = function() {
+      if (!document.getElementById("offerPrice").value) {
+        alert("Enter counter offer price");
+        return;
+      }
+      sendAction("counter");
+    };
+    document.getElementById("acceptBtn").onclick = function() { sendAction("accept"); };
+    document.getElementById("rejectBtn").onclick = function() { sendAction("reject"); };
+
+    loadChat();
+    setInterval(loadChat, 3000);
+  </script>
+
+  <script>
+    // this updates nav links based on login state
+    function renderAuthNav() {
+      var userId = localStorage.getItem("user_id");
+      var userName = localStorage.getItem("user_name") || "User";
+      var loginLink = document.getElementById("navLogin");
+      var registerLink = document.getElementById("navRegister");
+      var logoutLink = document.getElementById("navLogout");
+      var userText = document.getElementById("navUser");
+
+      if (!loginLink || !registerLink || !logoutLink || !userText) {
+        return;
+      }
+
+      if (userId) {
+        loginLink.style.display = "none";
+        registerLink.style.display = "none";
+        logoutLink.style.display = "inline";
+        userText.style.display = "inline";
+        userText.innerText = "Hi, " + userName;
+      } else {
+        loginLink.style.display = "inline";
+        registerLink.style.display = "inline";
+        logoutLink.style.display = "none";
+        userText.style.display = "none";
+      }
+    }
+
+    // this logs user out
+    function logoutUser() {
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("user_role");
+      alert("Logged out");
+      location.href = "index.html";
+    }
+
+    renderAuthNav();
+  </script>
+</body>
+</html>

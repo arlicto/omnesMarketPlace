@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omnes MarketPlace - Add Product</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    nav { background: #1f4fd6; padding: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    nav a { color: white; text-decoration: none; margin-right: 12px; font-size: 16px; }
+    .logo { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; background: white; }
+    .authRight { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .box { max-width: 500px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; }
+    input, select, textarea, button { width: 100%; margin: 8px 0; padding: 8px; box-sizing: border-box; }
+    button { background: #2d6cdf; color: white; border: 0; cursor: pointer; }
+  
+
+    @media (max-width: 768px) {
+      nav { padding: 10px; gap: 8px; }
+      nav a { font-size: 14px; margin-right: 8px; }
+      .logo, .brand img { width: 32px !important; height: 32px !important; }
+      .authRight { width: 100%; justify-content: flex-end; }
+
+      .container, .wrap, .box { width: auto; margin: 12px; padding: 14px; }
+      .cards { gap: 10px; }
+      .card { width: 100% !important; box-sizing: border-box; }
+
+      input, select, textarea, button, .btn { width: 100%; box-sizing: border-box; }
+      .row, .heroActions, .slideBtns { flex-direction: column; }
+
+      #cartBadge { margin-left: 0 !important; }
+    }
+
+  </style>
+</head>
+<body>
+  <nav>
+    <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
+    <a href="index.html">Home</a>
+    <a href="browse.html">Browse</a>
+    <a href="product.html">Product</a>
+    <a href="cart.html">Cart</a>
+    <a href="add_product.html">Add Product</a>
+    <a id="navLogin" href="login.html">Login</a>
+    <a id="navRegister" href="register.html">Register</a>
+    <span class="authRight">
+      <a id="navLogout" href="#" onclick="logoutUser()" style="display:none;">Logout</a>
+      <span id="navUser" style="display:none; color:white; font-size:16px;">Hi, User</span>
+    </span>
+  </nav>
+
+  <div class="box">
+    <h2>Add Product</h2>
+    <p id="roleMsg" style="font-size:13px; color:#666;"></p>
+    <form id="productForm">
+      <input type="text" id="name" placeholder="Product name" required>
+      <textarea id="description" placeholder="Description" rows="3"></textarea>
+      <input type="number" id="price" step="0.01" placeholder="Price" required>
+      <input type="text" id="image" placeholder="Main Image URL (optional if below is filled)">
+      <textarea id="images" placeholder="Multiple image URLs (comma separated)" rows="3"></textarea>
+      <input type="text" id="video" placeholder="Single video URL (optional)">
+      <input type="text" id="category" placeholder="Category">
+      <select id="sale_type">
+        <option value="buy_now">Buy Now</option>
+        <option value="auction">Auction</option>
+        <option value="negotiation">Negotiation</option>
+      </select>
+      <button type="submit">Save Product</button>
+    </form>
+    <p id="msg"></p>
+  </div>
+
+  <script>
+    var userRole = localStorage.getItem("user_role") || "";
+    var isLoggedIn = localStorage.getItem("user_id") ? true : false;
+
+    // only admin/seller can use this page
+    if (!isLoggedIn || (userRole !== "admin" && userRole !== "seller")) {
+      document.getElementById("productForm").style.display = "none";
+      document.getElementById("roleMsg").innerText = "Only admin or seller can add products.";
+    } else {
+      document.getElementById("roleMsg").innerText = "Logged in as " + userRole + ". You can add products.";
+    }
+
+    // this sends product data to backend
+    document.getElementById("productForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      var data = new FormData();
+      data.append("name", document.getElementById("name").value);
+      data.append("description", document.getElementById("description").value);
+      data.append("price", document.getElementById("price").value);
+      data.append("image", document.getElementById("image").value);
+      data.append("images", document.getElementById("images").value);
+      data.append("video", document.getElementById("video").value);
+      data.append("category", document.getElementById("category").value);
+      data.append("sale_type", document.getElementById("sale_type").value);
+
+      fetch("../backend/add_product.php", {
+        method: "POST",
+        body: data
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(result) {
+        // this shows simple success or error message
+        document.getElementById("msg").innerText = result.message;
+        if (result.success) {
+          document.getElementById("productForm").reset();
+        }
+      });
+    });
+  </script>
+
+  <script>
+    // this updates nav links based on login state
+    function renderAuthNav() {
+      var userId = localStorage.getItem("user_id");
+      var userName = localStorage.getItem("user_name") || "User";
+      var loginLink = document.getElementById("navLogin");
+      var registerLink = document.getElementById("navRegister");
+      var logoutLink = document.getElementById("navLogout");
+      var userText = document.getElementById("navUser");
+
+      if (!loginLink || !registerLink || !logoutLink || !userText) {
+        return;
+      }
+
+      if (userId) {
+        loginLink.style.display = "none";
+        registerLink.style.display = "none";
+        logoutLink.style.display = "inline";
+        userText.style.display = "inline";
+        userText.innerText = "Hi, " + userName;
+      } else {
+        loginLink.style.display = "inline";
+        registerLink.style.display = "inline";
+        logoutLink.style.display = "none";
+        userText.style.display = "none";
+      }
+    }
+
+    // this logs user out
+    function logoutUser() {
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("user_role");
+      alert("Logged out");
+      location.href = "index.html";
+    }
+
+    renderAuthNav();
+  </script>
+
+</body>
+</html>
