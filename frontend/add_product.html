@@ -95,17 +95,44 @@
       data.append("video", document.getElementById("video").value);
       data.append("category", document.getElementById("category").value);
       data.append("sale_type", document.getElementById("sale_type").value);
+      var uid = localStorage.getItem("user_id");
+      if (uid) {
+        data.append("user_id", uid);
+      }
 
       fetch("../backend/add_product.php", {
         method: "POST",
-        body: data
+        body: data,
+        credentials: "include"
       })
-      .then(function(res) { return res.json(); })
-      .then(function(result) {
-        // this shows simple success or error message
-        document.getElementById("msg").innerText = result.message;
-        if (result.success) {
-          document.getElementById("productForm").reset();
+      .then(function(res) {
+        return res.text().then(function(text) {
+          var result = null;
+          try {
+            result = text ? JSON.parse(text) : null;
+          } catch (parseErr) {
+            document.getElementById("msg").innerText = res.ok
+              ? "Unexpected response from server."
+              : ("Server error (" + res.status + ").");
+            return;
+          }
+          if (!res.ok) {
+            document.getElementById("msg").innerText =
+              (result && result.message) ? result.message : ("Request failed (" + res.status + ").");
+            return;
+          }
+          if (result && result.message) {
+            document.getElementById("msg").innerText = result.message;
+          }
+          if (result && result.success) {
+            document.getElementById("productForm").reset();
+          }
+        });
+      })
+      .catch(function(err) {
+        document.getElementById("msg").innerText = "Network error: could not reach the server.";
+        if (typeof console !== "undefined" && console.error) {
+          console.error(err);
         }
       });
     });

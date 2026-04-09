@@ -75,25 +75,57 @@
     function renderCart() {
       var list = document.getElementById("cartList");
       var total = 0;
-      list.innerHTML = "";
+      while (list.firstChild) {
+        list.removeChild(list.firstChild);
+      }
 
       if (cart.length === 0) {
-        list.innerHTML = "<p>Your cart is empty.</p>";
+        var emptyP = document.createElement("p");
+        emptyP.textContent = "Your cart is empty.";
+        list.appendChild(emptyP);
       } else {
         for (var i = 0; i < cart.length; i++) {
           total = total + Number(cart[i].price);
-          list.innerHTML +=
-            "<div class='item'>" +
-              "<div class='itemLeft'>" +
-                "<img class='thumb' src='" + getMainImage(cart[i]) + "' alt='product image'>" +
-                "<span>" + cart[i].name + " - €" + cart[i].price + "</span>" +
-              "</div>" +
-              "<button class='removeBtn' onclick='removeItem(" + i + ")'>Remove</button>" +
-            "</div>";
+
+          var row = document.createElement("div");
+          row.className = "item";
+
+          var left = document.createElement("div");
+          left.className = "itemLeft";
+
+          var thumb = document.createElement("img");
+          thumb.className = "thumb";
+          thumb.src = getMainImage(cart[i]);
+          thumb.alt = cart[i].name ? String(cart[i].name) : "Product";
+
+          var label = document.createElement("span");
+          label.textContent =
+            String(cart[i].name || "") + " - €" + String(cart[i].price != null ? cart[i].price : "");
+
+          left.appendChild(thumb);
+          left.appendChild(label);
+
+          var removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className = "removeBtn";
+          removeBtn.textContent = "Remove";
+          (function (idx) {
+            removeBtn.addEventListener("click", function () {
+              removeItem(idx);
+            });
+          })(i);
+
+          row.appendChild(left);
+          row.appendChild(removeBtn);
+          list.appendChild(row);
         }
       }
 
-      document.getElementById("totalText").innerHTML = "<b>Total: €" + total + "</b>";
+      var totalEl = document.getElementById("totalText");
+      totalEl.textContent = "";
+      var totalBold = document.createElement("b");
+      totalBold.textContent = "Total: €" + Number(total).toFixed(2);
+      totalEl.appendChild(totalBold);
     }
 
     // this removes one item from cart by index

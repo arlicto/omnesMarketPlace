@@ -113,6 +113,7 @@
     function logoutUser() {
       localStorage.removeItem("user_id");
       localStorage.removeItem("user_name");
+      localStorage.removeItem("user_role");
       alert("Logged out");
       location.href = "index.html";
     }

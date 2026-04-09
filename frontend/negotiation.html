@@ -71,7 +71,11 @@
   <script>
     var params = new URLSearchParams(window.location.search);
     var negotiationId = params.get("negotiation_id");
-    var userRole = localStorage.getItem("user_role") || "buyer";
+    var roleFromUrl = params.get("role");
+    var userRole =
+      roleFromUrl != null && String(roleFromUrl).trim() !== ""
+        ? String(roleFromUrl).trim()
+        : localStorage.getItem("user_role") || "buyer";
     var alreadyRedirectedToCheckout = false;
 
     // this loads negotiation info and all messages
