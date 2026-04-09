@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omnes MarketPlace - Browse</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    nav { background: #1f4fd6; padding: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    nav a { color: white; text-decoration: none; margin-right: 12px; font-size: 16px; }
+    .logo { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; background: white; }
+    .authRight { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .wrap { max-width: 1000px; margin: 20px auto; }
+    .cards { display: flex; flex-wrap: wrap; gap: 15px; }
+    .card { background: white; width: 220px; padding: 10px; border-radius: 6px; }
+    /* dynamic image style: show full image without cutting */
+    .card img { width: 100%; height: auto; max-height: 260px; object-fit: contain; border-radius: 4px; background: #f7f7f7; }
+    .btn { background: #2d6cdf; color: white; border: 0; padding: 8px 10px; border-radius: 4px; cursor: pointer; }
+    .row { margin-top: 8px; display: flex; gap: 8px; }
+  
+
+    @media (max-width: 768px) {
+      nav { padding: 10px; gap: 8px; }
+      nav a { font-size: 14px; margin-right: 8px; }
+      .logo, .brand img { width: 32px !important; height: 32px !important; }
+      .authRight { width: 100%; justify-content: flex-end; }
+
+      .container, .wrap, .box { width: auto; margin: 12px; padding: 14px; }
+      .cards { gap: 10px; }
+      .card { width: 100% !important; box-sizing: border-box; }
+
+      input, select, textarea, button, .btn { width: 100%; box-sizing: border-box; }
+      .row, .heroActions, .slideBtns { flex-direction: column; }
+
+      #cartBadge { margin-left: 0 !important; }
+    }
+
+  </style>
+</head>
+<body>
+  <nav>
+    <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
+    <a href="index.html">Home</a>
+    <a href="browse.html">Browse</a>
+    <a href="product.html">Product</a>
+    <a href="cart.html">Cart</a>
+    <a href="add_product.html">Add Product</a>
+    <a id="navLogin" href="login.html">Login</a>
+    <a id="navRegister" href="register.html">Register</a>
+    <span class="authRight">
+      <a id="navLogout" href="#" onclick="logoutUser()" style="display:none;">Logout</a>
+      <span id="navUser" style="display:none; color:white; font-size:16px;">Hi, User</span>
+    </span>
+  </nav>
+
+  <div class="wrap">
+    <h2>Browse Products</h2>
+    <div id="products" class="cards"></div>
+  </div>
+
+  <script>
+    // this gets first image from images list
+    function getMainImage(product) {
+      if (product.images && product.images.trim() !== "") {
+        var list = product.images.split(",");
+        return list[0].trim();
+      }
+      return product.image || "https://via.placeholder.com/300x200?text=No+Image";
+    }
+
+    // this gets data from database
+    fetch("../backend/get_products.php")
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        var box = document.getElementById("products");
+        box.innerHTML = "";
+
+        if (!data.success) {
+          box.innerHTML = "<p>No products found.</p>";
+          return;
+        }
+
+        // this shows products on page
+        data.products.forEach(function(p) {
+          var card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML =
+            "<img src='" + getMainImage(p) + "' alt='product'>" +
+            "<h3>" + p.name + "</h3>" +
+            "<p>Price: €" + p.price + "</p>";
+
+          // this opens dedicated product page
+          card.onclick = function() {
+            location.href = "product.html?id=" + p.id;
+          };
+
+          // create buttons in simple way
+          var row = document.createElement("div");
+          row.className = "row";
+
+          var viewBtn = document.createElement("button");
+          viewBtn.className = "btn";
+          viewBtn.innerText = "View";
+          viewBtn.onclick = function(e) {
+            e.stopPropagation();
+            location.href = "product.html?id=" + p.id;
+          };
+
+          var btn = document.createElement("button");
+          btn.className = "btn";
+          btn.innerText = "Add to Cart";
+          btn.onclick = function(e) {
+            e.stopPropagation();
+            addToCart(p);
+          };
+
+          row.appendChild(viewBtn);
+          row.appendChild(btn);
+          card.appendChild(row);
+          box.appendChild(card);
+        });
+      });
+
+    // this adds selected product into localStorage cart
+    function addToCart(product) {
+      var cart = JSON.parse(localStorage.getItem("cart")) || [];
+      cart.push(product);
+      localStorage.setItem("cart", JSON.stringify(cart));
+      alert("Product added to cart");
+    }
+  </script>
+
+  <script>
+    // this updates nav links based on login state
+    function renderAuthNav() {
+      var userId = localStorage.getItem("user_id");
+      var userName = localStorage.getItem("user_name") || "User";
+      var loginLink = document.getElementById("navLogin");
+      var registerLink = document.getElementById("navRegister");
+      var logoutLink = document.getElementById("navLogout");
+      var userText = document.getElementById("navUser");
+
+      if (!loginLink || !registerLink || !logoutLink || !userText) {
+        return;
+      }
+
+      if (userId) {
+        loginLink.style.display = "none";
+        registerLink.style.display = "none";
+        logoutLink.style.display = "inline";
+        userText.style.display = "inline";
+        userText.innerText = "Hi, " + userName;
+      } else {
+        loginLink.style.display = "inline";
+        registerLink.style.display = "inline";
+        logoutLink.style.display = "none";
+        userText.style.display = "none";
+      }
+    }
+
+    // this logs user out
+    function logoutUser() {
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_name");
+      alert("Logged out");
+      location.href = "index.html";
+    }
+
+    renderAuthNav();
+  </script>
+
+</body>
+</html>
