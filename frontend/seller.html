@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omnes MarketPlace - Seller Profile</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    nav { background: #1f4fd6; padding: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    nav a { color: white; text-decoration: none; margin-right: 12px; font-size: 16px; }
+    .logo { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; background: white; }
+    .authRight { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .container { max-width: 900px; margin: 20px auto; }
+    .box { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .seller-header { display: flex; align-items: center; gap: 20px; }
+    .seller-avatar { width: 120px; height: 120px; border-radius: 50%; background: #ddd; object-fit: cover; }
+    .seller-info h2 { margin: 0 0 8px 0; }
+    .seller-info p { margin: 4px 0; color: #666; }
+    .products-header { margin: 20px 0 15px 0; }
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+    .product-card { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px; cursor: pointer; transition: box-shadow 0.3s; }
+    .product-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .product-image { width: 100%; height: 180px; background: #f0f0f0; border-radius: 6px; object-fit: cover; margin-bottom: 10px; }
+    .product-name { font-weight: bold; margin-bottom: 8px; font-size: 14px; }
+    .product-price { color: #2d6cdf; font-weight: bold; margin-bottom: 8px; }
+    .product-category { font-size: 12px; color: #999; }
+    .btn { background: #2d6cdf; color: white; border: 0; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+    .btn:hover { background: #1f4fd6; }
+
+    @media (max-width: 768px) {
+      nav { padding: 10px; gap: 8px; }
+      nav a { font-size: 14px; margin-right: 8px; }
+      .logo { width: 32px; height: 32px; }
+      .authRight { width: 100%; justify-content: flex-end; }
+      .container, .box { margin: 12px; padding: 14px; }
+      .seller-header { flex-direction: column; text-align: center; }
+      .products-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
+    <a href="index.html">Home</a>
+    <a href="browse.html">Browse</a>
+    <a href="notifications.html">Alerts</a>
+    <a href="cart.html">Cart</a>
+    <a href="add_product.html">Add Product</a>
+    <a id="navLogin" href="login.html">Login</a>
+    <a id="navRegister" href="register.html">Register</a>
+    <span class="authRight">
+      <a id="navLogout" href="#" onclick="logoutUser()" style="display:none;">Logout</a>
+      <span id="navUser" style="display:none; color:white; font-size:16px;">Hi, User</span>
+    </span>
+  </nav>
+
+  <div class="container">
+    <div class="box" id="sellerBox">
+      <p>Loading seller profile...</p>
+    </div>
+  </div>
+
+  <script>
+    // Get seller ID from URL
+    var params = new URLSearchParams(window.location.search);
+    var sellerId = params.get("seller_id");
+
+    if (!sellerId) {
+      document.getElementById("sellerBox").innerHTML = "<p>No seller specified. Please go to <a href='browse.html'>Browse</a> to find sellers.</p>";
+    } else {
+      // Fetch seller info and products
+      fetch("../backend/get_seller_products.php?seller_id=" + encodeURIComponent(sellerId))
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          var box = document.getElementById("sellerBox");
+          
+          if (!data.success) {
+            box.innerHTML = "<p>Error: " + data.message + "</p>";
+            return;
+          }
+
+          var seller = data.seller;
+          var products = data.products || [];
+
+          var html = 
+            "<div class='seller-header'>" +
+              "<img class='seller-avatar' src='https://via.placeholder.com/120?text=" + encodeURIComponent(seller.name) + "' alt='Seller avatar'>" +
+              "<div class='seller-info'>" +
+                "<h2>" + seller.name + "</h2>" +
+                "<p>Seller ID: " + seller.id + "</p>" +
+                "<p>Products listed: " + products.length + "</p>" +
+              "</div>" +
+            "</div>";
+
+          if (products.length === 0) {
+            html += "<p>This seller has no active products listed.</p>";
+          } else {
+            html += 
+              "<h3 class='products-header'>Products (" + products.length + ")</h3>" +
+              "<div class='products-grid'>";
+            
+            products.forEach(function(product) {
+              var imgSrc = product.image || "https://via.placeholder.com/200x180?text=No+Image";
+              html +=
+                "<div class='product-card' onclick='goToProduct(" + product.id + ')">' +
+                  "<img class='product-image' src='" + imgSrc + "' alt='" + product.name + "'>" +
+                  "<div class='product-name'>" + product.name + "</div>" +
+                  "<div class='product-price'>€" + parseFloat(product.price).toFixed(2) + "</div>" +
+                  "<div class='product-category'>" + (product.category || "Other") + "</div>" +
+                "</div>";
+            });
+
+            html += "</div>";
+          }
+
+          box.innerHTML = html;
+        })
+        .catch(function(err) {
+          document.getElementById("sellerBox").innerHTML = "<p>Error loading seller profile.</p>";
+          console.error(err);
+        });
+    }
+
+    // Navigate to product detail page
+    window.goToProduct = function(productId) {
+      location.href = "product.html?id=" + productId;
+    };
+
+    // Auth nav functions
+    function renderAuthNav() {
+      var userId = localStorage.getItem("user_id");
+      var userName = localStorage.getItem("user_name") || "User";
+      var loginLink = document.getElementById("navLogin");
+      var registerLink = document.getElementById("navRegister");
+      var logoutLink = document.getElementById("navLogout");
+      var userText = document.getElementById("navUser");
+
+      if (!loginLink || !registerLink || !logoutLink || !userText) {
+        return;
+      }
+
+      if (userId) {
+        loginLink.style.display = "none";
+        registerLink.style.display = "none";
+        logoutLink.style.display = "inline";
+        userText.style.display = "inline";
+        userText.innerText = "Hi, " + userName;
+      } else {
+        loginLink.style.display = "inline";
+        registerLink.style.display = "inline";
+        logoutLink.style.display = "none";
+        userText.style.display = "none";
+      }
+    }
+
+    function logoutUser() {
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("user_role");
+      alert("Logged out");
+      location.href = "index.html";
+    }
+
+    renderAuthNav();
+  </script>
+</body>
+</html>

@@ -30,7 +30,11 @@
     <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
     <a href="index.html">Home</a>
     <a href="browse.html">Browse</a>
+<<<<<<< feature/frontend-ui
     <a href="product.html">Product</a>
+=======
+    <a href="notifications.html">Alerts</a>
+>>>>>>> main
     <a href="cart.html">Cart</a>
     <a href="add_product.html">Add Product</a>
     <a id="navLogin" href="login.html">Login</a>
@@ -63,8 +67,13 @@
 
     if (!userId) {
       alert("Please login first");
+<<<<<<< feature/frontend-ui
       location.href = "login.html";
     }
+=======
+      location.replace("login.html");
+    } else {
+>>>>>>> main
 
     // validate product id from url
     if (!productId || isNaN(Number(productId)) || !negotiationId || isNaN(Number(negotiationId))) {
@@ -160,6 +169,12 @@
         return;
       }
 
+<<<<<<< feature/frontend-ui
+=======
+      payBtn.disabled = true;
+      document.getElementById("msg").innerText = "Processing payment...";
+
+>>>>>>> main
       var fd = new FormData();
       fd.append("product_id", productId);
       fd.append("negotiation_id", negotiationId);
@@ -168,6 +183,7 @@
         method: "POST",
         body: fd
       })
+<<<<<<< feature/frontend-ui
       .then(function(res) { return res.json(); })
       .then(function(r) {
         document.getElementById("msg").innerText = r.message;
@@ -177,6 +193,33 @@
         }
       });
     };
+=======
+      .then(function(res) {
+        return res.json().then(function(r) {
+          return { ok: res.ok, r: r };
+        });
+      })
+      .then(function(out) {
+        var r = out.r;
+        document.getElementById("msg").innerText = (r && r.message) ? r.message : "";
+        if (out.ok && r && r.success) {
+          alert("Payment done. Order placed.");
+          location.replace("index.html");
+          return;
+        }
+        payBtn.disabled = false;
+      })
+      .catch(function(err) {
+        document.getElementById("msg").innerText = "Network error: could not complete payment.";
+        payBtn.disabled = false;
+        if (typeof console !== "undefined" && console.error) {
+          console.error(err);
+        }
+      });
+    };
+
+    }
+>>>>>>> main
   </script>
 
   <script>

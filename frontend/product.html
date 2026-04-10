@@ -47,7 +47,7 @@
     <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
     <a href="index.html">Home</a>
     <a href="browse.html">Browse</a>
-    <a href="product.html">Product</a>
+    <a href="notifications.html">Alerts</a>
     <a href="cart.html">Cart</a>
     <a href="add_product.html">Add Product</a>
     <a id="navLogin" href="login.html">Login</a>
@@ -90,7 +90,8 @@
         }
 
         if (!id) {
-          box.innerHTML = "<p>Open this page with a product id, for example: product.html?id=1</p>";
+          box.innerHTML =
+            "<p>Open a product from <a href='browse.html'>Browse</a> or the home page.</p>";
           return;
         }
         var product = null;
@@ -210,10 +211,24 @@
             "</video>";
         }
 
-        // simple demo user values
-        var buyerId = localStorage.getItem("user_id") || 1;
-        var sellerId = 2; // simple fixed seller id for beginner project
-        var isLoggedIn = localStorage.getItem("user_id") ? true : false;
+        var storedBuyer = localStorage.getItem("user_id");
+        var buyerId =
+          storedBuyer != null && String(storedBuyer).trim() !== ""
+            ? String(storedBuyer).trim()
+            : null;
+
+        var sellerRaw =
+          product.seller_id != null && String(product.seller_id).trim() !== ""
+            ? product.seller_id
+            : product.sellerId != null && String(product.sellerId).trim() !== ""
+              ? product.sellerId
+              : null;
+        var sellerId =
+          sellerRaw != null && String(sellerRaw).trim() !== ""
+            ? String(sellerRaw).trim()
+            : null;
+
+        var isLoggedIn = buyerId !== null;
         var userRole = isLoggedIn ? (localStorage.getItem("user_role") || "buyer") : "buyer";
         var role = userRole;
         // keep URL support for seller demo if needed
@@ -221,6 +236,19 @@
           role = "seller";
         }
         var currentNegotiationId = "";
+
+        var negNoticeSetup = document.getElementById("negNotice");
+        if (role !== "seller" && !sellerId) {
+          document.getElementById("sendOfferBtn").disabled = true;
+          document.getElementById("offerPrice").disabled = true;
+          negNoticeSetup.innerText =
+            "Negotiation unavailable: this product has no seller assigned.";
+        } else if (role !== "seller" && !buyerId) {
+          document.getElementById("sendOfferBtn").disabled = true;
+          document.getElementById("offerPrice").disabled = true;
+          negNoticeSetup.innerText =
+            "Log in as a buyer to start or view your negotiation.";
+        }
 
         // admin should not see negotiation (only buyer and seller)
         if (isLoggedIn && userRole === "admin") {
@@ -299,10 +327,18 @@
 
         // this loads current negotiation status
         function loadNegotiation() {
-          var url = "../backend/get_negotiation.php?product_id=" + product.id;
+          if (role !== "seller" && !buyerId) {
+            document.getElementById("negStatus").innerText =
+              "Status: Log in as a buyer to view your negotiation";
+            document.getElementById("negOffer").innerText = "Last Offer: -";
+            document.getElementById("negRound").innerText = "Rounds: 0 / 5";
+            document.getElementById("openChatBtn").style.display = "none";
+            return;
+          }
+          var url = "../backend/get_negotiation.php?product_id=" + encodeURIComponent(product.id);
           // buyer sees their own negotiation, seller sees latest for product
           if (role !== "seller") {
-            url = url + "&buyer_id=" + buyerId;
+            url = url + "&buyer_id=" + encodeURIComponent(buyerId);
           }
 
           fetch(url)
@@ -372,6 +408,15 @@
 
         // this sends offer to server
         document.getElementById("sendOfferBtn").onclick = function() {
+          if (!buyerId) {
+            alert("Please log in as a buyer to send an offer.");
+            location.href = "login.html";
+            return;
+          }
+          if (!sellerId) {
+            alert("This product has no seller assigned. Negotiation is unavailable.");
+            return;
+          }
           var offer = document.getElementById("offerPrice").value;
           if (!offer) {
             alert("Enter offer price");

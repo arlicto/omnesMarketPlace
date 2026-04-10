@@ -38,7 +38,11 @@
     <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
     <a href="index.html">Home</a>
     <a href="browse.html">Browse</a>
+<<<<<<< feature/frontend-ui
     <a href="product.html">Product</a>
+=======
+    <a href="notifications.html">Alerts</a>
+>>>>>>> main
     <a href="cart.html">Cart</a>
     <a href="add_product.html">Add Product</a>
     <a id="navLogin" href="login.html">Login</a>
@@ -59,7 +63,16 @@
       <input type="text" id="image" placeholder="Main Image URL (optional if below is filled)">
       <textarea id="images" placeholder="Multiple image URLs (comma separated)" rows="3"></textarea>
       <input type="text" id="video" placeholder="Single video URL (optional)">
+<<<<<<< feature/frontend-ui
       <input type="text" id="category" placeholder="Category">
+=======
+      <label for="category">Product category</label>
+      <select id="category">
+        <option value="regular">Regular</option>
+        <option value="rare">Rare</option>
+        <option value="high-end">High-end</option>
+      </select>
+>>>>>>> main
       <select id="sale_type">
         <option value="buy_now">Buy Now</option>
         <option value="auction">Auction</option>
@@ -95,6 +108,7 @@
       data.append("video", document.getElementById("video").value);
       data.append("category", document.getElementById("category").value);
       data.append("sale_type", document.getElementById("sale_type").value);
+<<<<<<< feature/frontend-ui
 
       fetch("../backend/add_product.php", {
         method: "POST",
@@ -106,6 +120,46 @@
         document.getElementById("msg").innerText = result.message;
         if (result.success) {
           document.getElementById("productForm").reset();
+=======
+      var uid = localStorage.getItem("user_id");
+      if (uid) {
+        data.append("user_id", uid);
+      }
+
+      fetch("../backend/add_product.php", {
+        method: "POST",
+        body: data,
+        credentials: "include"
+      })
+      .then(function(res) {
+        return res.text().then(function(text) {
+          var result = null;
+          try {
+            result = text ? JSON.parse(text) : null;
+          } catch (parseErr) {
+            document.getElementById("msg").innerText = res.ok
+              ? "Unexpected response from server."
+              : ("Server error (" + res.status + ").");
+            return;
+          }
+          if (!res.ok) {
+            document.getElementById("msg").innerText =
+              (result && result.message) ? result.message : ("Request failed (" + res.status + ").");
+            return;
+          }
+          if (result && result.message) {
+            document.getElementById("msg").innerText = result.message;
+          }
+          if (result && result.success) {
+            document.getElementById("productForm").reset();
+          }
+        });
+      })
+      .catch(function(err) {
+        document.getElementById("msg").innerText = "Network error: could not reach the server.";
+        if (typeof console !== "undefined" && console.error) {
+          console.error(err);
+>>>>>>> main
         }
       });
     });
