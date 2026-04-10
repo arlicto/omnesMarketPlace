@@ -20,8 +20,13 @@ $price = $_POST["price"] ?? "";
 $image = $_POST["image"] ?? "";
 $images = $_POST["images"] ?? "";
 $video = $_POST["video"] ?? "";
-$category = $_POST["category"] ?? "";
+$category = trim($_POST["category"] ?? "");
 $sale_type = $_POST["sale_type"] ?? "buy_now";
+
+$allowed_categories = ["rare", "high-end", "regular"];
+if ($category === "" || !in_array($category, $allowed_categories, true)) {
+    $category = "regular";
+}
 
 if ($name == "" || $price == "") {
     echo json_encode(["success" => false, "message" => "Name and price are required"]);
@@ -38,6 +43,8 @@ if (!in_array($sale_type, $allowed_sale_types)) {
     echo json_encode(["success" => false, "message" => "Invalid sale_type"]);
     exit;
 }
+
+$category = $conn->real_escape_string($category);
 
 // this sets main image from images list if single image is empty
 if ($image == "" && $images != "") {

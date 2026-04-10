@@ -17,7 +17,9 @@
     .card img { width: 100%; height: auto; max-height: 260px; object-fit: contain; border-radius: 4px; background: #f7f7f7; }
     .btn { background: #2d6cdf; color: white; border: 0; padding: 8px 10px; border-radius: 4px; cursor: pointer; }
     .row { margin-top: 8px; display: flex; gap: 8px; }
-  
+    .catSection { margin-bottom: 32px; }
+    .catSection h3 { margin-bottom: 12px; color: #20325e; }
+    .muted { color: #666; font-size: 14px; }
 
     @media (max-width: 768px) {
       nav { padding: 10px; gap: 8px; }
@@ -42,7 +44,7 @@
     <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
     <a href="index.html">Home</a>
     <a href="browse.html">Browse</a>
-    <a href="product.html">Product</a>
+    <a href="notifications.html">Alerts</a>
     <a href="cart.html">Cart</a>
     <a href="add_product.html">Add Product</a>
     <a id="navLogin" href="login.html">Login</a>
@@ -56,7 +58,21 @@
 
   <div class="wrap">
     <h2>Browse Products</h2>
-    <div id="products" class="cards"></div>
+
+    <div class="catSection">
+      <h3>Rare Items</h3>
+      <div id="productsRare" class="cards"></div>
+    </div>
+
+    <div class="catSection">
+      <h3>High-End Items</h3>
+      <div id="productsHighEnd" class="cards"></div>
+    </div>
+
+    <div class="catSection">
+      <h3>Regular Items</h3>
+      <div id="productsRegular" class="cards"></div>
+    </div>
   </div>
 
   <script>
@@ -69,58 +85,71 @@
       return product.image || "https://via.placeholder.com/300x200?text=No+Image";
     }
 
-    // this gets data from database
-    fetch("../backend/get_products.php")
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        var box = document.getElementById("products");
-        box.innerHTML = "";
+    // this fills one category section from the API
+    function fillSection(containerId, categoryValue) {
+      var box = document.getElementById(containerId);
+      box.innerHTML = "<p class='muted'>Loading...</p>";
 
-        if (!data.success) {
-          box.innerHTML = "<p>No products found.</p>";
-          return;
-        }
+      fetch("../backend/get_products.php?category=" + encodeURIComponent(categoryValue))
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          box.innerHTML = "";
 
-        // this shows products on page
-        data.products.forEach(function(p) {
-          var card = document.createElement("div");
-          card.className = "card";
-          card.innerHTML =
-            "<img src='" + getMainImage(p) + "' alt='product'>" +
-            "<h3>" + p.name + "</h3>" +
-            "<p>Price: €" + p.price + "</p>";
+          if (!data.success) {
+            box.innerHTML = "<p>No products found.</p>";
+            return;
+          }
 
-          // this opens dedicated product page
-          card.onclick = function() {
-            location.href = "product.html?id=" + p.id;
-          };
+          if (data.products.length === 0) {
+            box.innerHTML = "<p>No items in this category yet.</p>";
+            return;
+          }
 
-          // create buttons in simple way
-          var row = document.createElement("div");
-          row.className = "row";
+          data.products.forEach(function(p) {
+            var card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML =
+              "<img src='" + getMainImage(p) + "' alt='product'>" +
+              "<h3>" + p.name + "</h3>" +
+              "<p>Price: €" + p.price + "</p>";
 
-          var viewBtn = document.createElement("button");
-          viewBtn.className = "btn";
-          viewBtn.innerText = "View";
-          viewBtn.onclick = function(e) {
-            e.stopPropagation();
-            location.href = "product.html?id=" + p.id;
-          };
+            card.onclick = function() {
+              location.href = "product.html?id=" + p.id;
+            };
 
-          var btn = document.createElement("button");
-          btn.className = "btn";
-          btn.innerText = "Add to Cart";
-          btn.onclick = function(e) {
-            e.stopPropagation();
-            addToCart(p);
-          };
+            var row = document.createElement("div");
+            row.className = "row";
 
-          row.appendChild(viewBtn);
-          row.appendChild(btn);
-          card.appendChild(row);
-          box.appendChild(card);
+            var viewBtn = document.createElement("button");
+            viewBtn.className = "btn";
+            viewBtn.innerText = "View";
+            viewBtn.onclick = function(e) {
+              e.stopPropagation();
+              location.href = "product.html?id=" + p.id;
+            };
+
+            var btn = document.createElement("button");
+            btn.className = "btn";
+            btn.innerText = "Add to Cart";
+            btn.onclick = function(e) {
+              e.stopPropagation();
+              addToCart(p);
+            };
+
+            row.appendChild(viewBtn);
+            row.appendChild(btn);
+            card.appendChild(row);
+            box.appendChild(card);
+          });
+        })
+        .catch(function() {
+          box.innerHTML = "<p>Could not load products.</p>";
         });
-      });
+    }
+
+    fillSection("productsRare", "rare");
+    fillSection("productsHighEnd", "high-end");
+    fillSection("productsRegular", "regular");
 
     // this adds selected product into localStorage cart
     function addToCart(product) {
