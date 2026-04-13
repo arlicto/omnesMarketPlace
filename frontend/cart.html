@@ -57,6 +57,7 @@
     <h2>Your Cart</h2>
     <div id="cartList"></div>
     <p id="totalText"><b>Subtotal: €0</b></p>
+    <button id="checkoutBtn" class="btn" type="button" style="display:none;">Checkout / Payment</button>
   </div>
 
   <script>
@@ -74,6 +75,7 @@
     // this renders cart items and subtotal
     function renderCart() {
       var list = document.getElementById("cartList");
+      var checkoutBtn = document.getElementById("checkoutBtn");
       var total = 0;
       while (list.firstChild) {
         list.removeChild(list.firstChild);
@@ -130,6 +132,31 @@
       var totalBold = document.createElement("b");
       totalBold.textContent = "Subtotal: €" + Number(total).toFixed(2);
       totalEl.appendChild(totalBold);
+
+      var userId = localStorage.getItem("user_id");
+      var userRole = localStorage.getItem("user_role") || "";
+      if (checkoutBtn) {
+        var canCheckout = !!userId && cart.length > 0 && userRole !== "seller";
+        checkoutBtn.style.display = canCheckout ? "inline-block" : "none";
+      }
+    }
+
+    var checkoutBtn = document.getElementById("checkoutBtn");
+    if (checkoutBtn) {
+      checkoutBtn.addEventListener("click", function() {
+        var userId = localStorage.getItem("user_id");
+        var userRole = localStorage.getItem("user_role") || "";
+        if (!userId) {
+          alert("Please login first.");
+          location.href = "login.html";
+          return;
+        }
+        if (userRole === "seller") {
+          alert("Sellers cannot checkout.");
+          return;
+        }
+        location.href = "account.html";
+      });
     }
 
     function loadCart() {
@@ -226,6 +253,7 @@
     function logoutUser() {
       localStorage.removeItem("user_id");
       localStorage.removeItem("user_name");
+      localStorage.removeItem("user_role");
       alert("Logged out");
       location.href = "index.html";
     }
