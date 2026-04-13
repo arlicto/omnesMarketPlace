@@ -12,6 +12,18 @@ $buyer_id = $_SESSION["user_id"];
 $seller_id = $_POST["seller_id"] ?? "";
 $offer_price = $_POST["offer_price"] ?? "";
 
+// buyer must accept clause before making offers
+$c_res = $conn->query("SELECT offer_clause_accepted FROM users WHERE id='" . $conn->real_escape_string((string)$buyer_id) . "' LIMIT 1");
+if (!$c_res || $c_res->num_rows === 0) {
+    echo json_encode(["success" => false, "message" => "User not found"]);
+    exit;
+}
+$c_row = $c_res->fetch_assoc();
+if ((int)($c_row["offer_clause_accepted"] ?? 0) !== 1) {
+    echo json_encode(["success" => false, "message" => "You must accept the offer clause before making an offer"]);
+    exit;
+}
+
 if ($product_id == "" || $seller_id == "" || $offer_price == "") {
     echo json_encode(["success" => false, "message" => "Please send all fields"]);
     exit;
@@ -23,7 +35,7 @@ if (!is_numeric($product_id) || !is_numeric($seller_id) || !is_numeric($offer_pr
 }
 
 // do not allow negotiation for sold product
-$p_res = $conn->query("SELECT id, is_sold FROM products WHERE id='$product_id' LIMIT 1");
+$p_res = $conn->query("SELECT id, is_sold, sale_type FROM products WHERE id='$product_id' LIMIT 1");
 if ($p_res->num_rows == 0) {
     echo json_encode(["success" => false, "message" => "Product not found"]);
     exit;
@@ -31,6 +43,12 @@ if ($p_res->num_rows == 0) {
 $p = $p_res->fetch_assoc();
 if ((int)$p["is_sold"] === 1) {
     echo json_encode(["success" => false, "message" => "Product already sold"]);
+    exit;
+}
+
+// allow negotiation only when product is configured for negotiation
+if (strtolower((string)($p["sale_type"] ?? "")) !== "negotiation") {
+    echo json_encode(["success" => false, "message" => "This product is not available for negotiation"]);
     exit;
 }
 

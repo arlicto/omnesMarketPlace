@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omnes MarketPlace - Your Account</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    nav { background: #1f4fd6; padding: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    nav a { color: white; text-decoration: none; margin-right: 12px; font-size: 16px; }
+    .logo { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; background: white; }
+    .authRight { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .box { max-width: 700px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; }
+    .row { display: flex; gap: 10px; }
+    .row > div { flex: 1; }
+    .profileWall { border-radius: 10px; overflow: hidden; border: 1px solid #e7ecff; margin-bottom: 16px; position: relative; }
+    .profileBg { height: 240px; background: #eef2ff; background-size: cover; background-position: center; }
+    .profileBody { padding: 70px 16px 16px 16px; background: white; }
+    .avatarWrap { position: absolute; left: 50%; top: 186px; transform: translateX(-50%); z-index: 2; }
+    .avatar { width: 108px; height: 108px; border-radius: 50%; object-fit: cover; border: 4px solid white; background: #f7f7f7; }
+    .centerText { text-align: center; }
+    .bgGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+    .bgThumb { width: 100%; height: 70px; object-fit: cover; border-radius: 6px; border: 2px solid transparent; cursor: pointer; background: #f7f7f7; }
+    .bgThumb.selected { border-color: #2d6cdf; }
+    input, button { width: 100%; margin: 8px 0; padding: 8px; box-sizing: border-box; }
+    button { background: #2d6cdf; color: white; border: 0; cursor: pointer; }
+    .small { font-size: 13px; color: #444; }
+  </style>
+</head>
+<body>
+  <nav>
+    <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
+    <a href="index.html">Home</a>
+    <a href="browse.html">Browse</a>
+    <a id="navAlerts" href="notifications.html">Alerts</a>
+    <a id="navCart" href="cart.html">Cart</a>
+    <a id="navAddProduct" href="add_product.html">Add Product</a>
+    <a id="navAccount" href="account.html">My Account</a>
+    <a id="navLogin" href="login.html">Login</a>
+    <a id="navRegister" href="register.html">Register</a>
+    <span class="authRight">
+      <a id="navLogout" href="#" onclick="logoutUser()" style="display:none;">Logout</a>
+      <span id="navUser" style="display:none; color:white; font-size:16px;">Hi, User</span>
+    </span>
+  </nav>
+
+  <div class="box">
+    <h2>My Account</h2>
+    <p id="msg" class="small"></p>
+
+    <div id="viewBox" style="display:none;">
+      <div class="profileWall">
+        <div id="profileBg" class="profileBg"></div>
+        <div class="profileBody">
+          <div class="avatarWrap">
+            <img id="profileAvatar" class="avatar" src="../images/default_profile.jpg" alt="Profile photo">
+          </div>
+          <div class="centerText">
+            <h3 id="accName" style="margin:10px 0 2px 0;">-</h3>
+            <p id="accEmail" class="small" style="margin:0;">-</p>
+            <p class="small" style="margin:6px 0 0 0;"><b>Offer clause accepted:</b> <span id="accClause">-</span></p>
+          </div>
+        </div>
+      </div>
+
+      <hr>
+      <h3>Basic info</h3>
+      <form id="updateForm">
+        <input type="text" id="name" placeholder="Name" required>
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="text" id="address" placeholder="Address">
+        <input type="text" id="payment_brand" placeholder="Payment brand (e.g., Visa)">
+        <input type="text" id="payment_last4" placeholder="Payment last 4 digits">
+        <button type="submit">Save</button>
+      </form>
+
+      <p class="small"><b>Payment (masked):</b> <span id="accPayment">-</span></p>
+
+      <hr>
+      <h3>Delivery Information</h3>
+      <form id="deliveryForm">
+        <div class="row">
+          <div>
+            <input type="text" id="first_name" placeholder="First name" required>
+          </div>
+          <div>
+            <input type="text" id="last_name" placeholder="Last name" required>
+          </div>
+        </div>
+
+        <input type="text" id="address_line1" placeholder="Address Line 1" required>
+        <input type="text" id="address_line2" placeholder="Address Line 2">
+
+        <div class="row">
+          <div>
+            <input type="text" id="city" placeholder="City" required>
+          </div>
+          <div>
+            <input type="text" id="postal_code" placeholder="Postal Code" required>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <input type="text" id="country" placeholder="Country" required>
+          </div>
+          <div>
+            <input type="text" id="phone" placeholder="Phone number" required>
+          </div>
+        </div>
+
+        <button type="submit">Save Delivery Info</button>
+      </form>
+
+      <hr>
+      <h3>Payment Method</h3>
+      <form id="paymentForm">
+        <div class="row">
+          <div>
+            <input type="text" id="payment_type" placeholder="Type of payment card (Visa, MasterCard, American Express, PayPal)" required>
+          </div>
+          <div>
+            <input type="email" id="paypal_email" placeholder="PayPal email (only if PayPal)" style="display:none;">
+          </div>
+        </div>
+
+        <input type="text" id="card_number" placeholder="Card number" required>
+        <input type="text" id="card_name" placeholder="Name displayed on the card" required>
+
+        <div class="row">
+          <div>
+            <input type="text" id="expiry" placeholder="Expiration date (MM/YY)" required>
+          </div>
+          <div>
+            <input type="text" id="security_code" placeholder="Security code (3 or 4 digits)" required>
+          </div>
+        </div>
+
+        <button type="submit">Save Payment Method</button>
+        <button type="button" id="validateBtn">Validate Purchase</button>
+        <p id="payMsg" class="small"></p>
+      </form>
+
+      <div id="sellerBgBox" style="display:none;">
+        <hr>
+        <h3>Profile background</h3>
+        <p class="small">Choose a background image for your seller profile wall.</p>
+        <div id="bgGrid" class="bgGrid"></div>
+        <p id="bgMsg" class="small"></p>
+      </div>
+
+      <div id="sellerProfileBox" style="display:none;">
+        <hr>
+        <h3>Change profile picture</h3>
+        <form id="sellerPhotoForm">
+          <input type="file" id="seller_photo" accept="image/*">
+          <button type="submit">Upload Profile Photo</button>
+        </form>
+        <p id="sellerProfileMsg" class="small"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function renderAuthNav() {
+      var userId = localStorage.getItem("user_id");
+      var userName = localStorage.getItem("user_name") || "User";
+      var userRole = localStorage.getItem("user_role") || "";
+      var loginLink = document.getElementById("navLogin");
+      var registerLink = document.getElementById("navRegister");
+      var logoutLink = document.getElementById("navLogout");
+      var userText = document.getElementById("navUser");
+      var alertsLink = document.getElementById("navAlerts");
+      var cartLink = document.getElementById("navCart");
+      var addProductLink = document.getElementById("navAddProduct");
+      var accountLink = document.getElementById("navAccount");
+
+      if (!loginLink || !registerLink || !logoutLink || !userText) {
+        return;
+      }
+
+      if (userId) {
+        loginLink.style.display = "none";
+        registerLink.style.display = "none";
+        logoutLink.style.display = "inline";
+        userText.style.display = "inline";
+        userText.innerText = "Hi, " + userName;
+
+        if (addProductLink) {
+          addProductLink.style.display = (userRole === "seller" || userRole === "admin") ? "inline" : "none";
+        }
+
+        if (userRole === "seller") {
+          if (alertsLink) { alertsLink.style.display = "none"; }
+          if (cartLink) { cartLink.style.display = "none"; }
+          if (accountLink) { accountLink.style.display = "inline"; }
+        } else {
+          if (alertsLink) { alertsLink.style.display = "inline"; }
+          if (cartLink) { cartLink.style.display = "inline"; }
+          if (accountLink) { accountLink.style.display = "inline"; }
+        }
+      } else {
+        loginLink.style.display = "inline";
+        registerLink.style.display = "inline";
+        logoutLink.style.display = "none";
+        userText.style.display = "none";
+
+        if (alertsLink) { alertsLink.style.display = "none"; }
+        if (addProductLink) { addProductLink.style.display = "none"; }
+        if (accountLink) { accountLink.style.display = "none"; }
+        if (cartLink) { cartLink.style.display = "inline"; }
+      }
+    }
+
+    function logoutUser() {
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("user_role");
+      alert("Logged out");
+      location.href = "index.html";
+    }
+
+    function maskPayment(brand, last4) {
+      if (!brand && !last4) {
+        return "-";
+      }
+      var b = brand ? String(brand) : "Card";
+      var l = last4 ? String(last4) : "????";
+      return b + " **** **** **** " + l;
+    }
+
+    function updatePaymentVisibility() {
+      var t = String(document.getElementById("payment_type").value || "").trim();
+      var isPayPal = t.toLowerCase() === "paypal";
+      var pp = document.getElementById("paypal_email");
+
+      var cardFields = ["card_number", "card_name", "expiry", "security_code"];
+      for (var i = 0; i < cardFields.length; i++) {
+        var el = document.getElementById(cardFields[i]);
+        if (el) {
+          el.style.display = isPayPal ? "none" : "block";
+          el.required = !isPayPal;
+        }
+      }
+
+      if (pp) {
+        pp.style.display = isPayPal ? "block" : "none";
+        pp.required = isPayPal;
+      }
+    }
+
+    renderAuthNav();
+
+    function loadAccount() {
+      fetch("../backend/get_account.php", { credentials: "include" })
+        .then(function(res) { return res.json(); })
+        .then(function(r) {
+          if (!r.success) {
+            var m = r.message || "Login required";
+            document.getElementById("msg").innerText = m;
+            if (String(m).toLowerCase().indexOf("login required") !== -1) {
+              localStorage.removeItem("user_id");
+              localStorage.removeItem("user_name");
+              localStorage.removeItem("user_role");
+              setTimeout(function() {
+                location.href = "login.html";
+              }, 300);
+            }
+            return;
+          }
+
+          document.getElementById("viewBox").style.display = "block";
+          document.getElementById("accPayment").innerText = maskPayment(r.user.payment_brand, r.user.payment_last4);
+          document.getElementById("accClause").innerText = (String(r.user.offer_clause_accepted) === "1") ? "Yes" : "No";
+
+          document.getElementById("accName").innerText = r.user.name || "-";
+          document.getElementById("accEmail").innerText = r.user.email || "-";
+
+          var bg = r.user.background_image ? String(r.user.background_image) : "";
+          var bgEl = document.getElementById("profileBg");
+          if (bgEl) {
+            bgEl.style.backgroundImage = bg ? ("url('" + bg + "')") : "";
+          }
+          var av = r.user.profile_photo ? String(r.user.profile_photo) : "../images/default_profile.jpg";
+          var avEl = document.getElementById("profileAvatar");
+          if (avEl) {
+            avEl.src = av;
+          }
+
+          document.getElementById("name").value = r.user.name || "";
+          document.getElementById("email").value = r.user.email || "";
+          document.getElementById("address").value = r.user.address || "";
+          document.getElementById("payment_brand").value = r.user.payment_brand || "";
+          document.getElementById("payment_last4").value = r.user.payment_last4 || "";
+
+          document.getElementById("first_name").value = r.user.first_name || "";
+          document.getElementById("last_name").value = r.user.last_name || "";
+          document.getElementById("address_line1").value = r.user.address_line1 || "";
+          document.getElementById("address_line2").value = r.user.address_line2 || "";
+          document.getElementById("city").value = r.user.city || "";
+          document.getElementById("postal_code").value = r.user.postal_code || "";
+          document.getElementById("country").value = r.user.country || "";
+          document.getElementById("phone").value = r.user.phone || "";
+
+          document.getElementById("payment_type").value = r.user.payment_type || (r.user.payment_brand || "");
+          document.getElementById("paypal_email").value = r.user.payment_paypal_email || "";
+          document.getElementById("card_number").value = r.user.payment_card_number || "";
+          document.getElementById("card_name").value = r.user.payment_card_name || "";
+          document.getElementById("expiry").value = r.user.payment_expiry || "";
+          document.getElementById("security_code").value = r.user.payment_cvc || "";
+          updatePaymentVisibility();
+
+          var isSeller = String(r.user.role || "") === "seller";
+          var bgBox = document.getElementById("sellerBgBox");
+          if (bgBox) {
+            bgBox.style.display = isSeller ? "block" : "none";
+          }
+          var spBox = document.getElementById("sellerProfileBox");
+          if (spBox) {
+            spBox.style.display = isSeller ? "block" : "none";
+          }
+          if (isSeller) {
+            loadSellerBackgrounds(r.user.background_image || "");
+          }
+        });
+    }
+
+    function loadSellerBackgrounds(currentBg) {
+      fetch("../backend/list_seller_backgrounds.php", { credentials: "include" })
+        .then(function(res) { return res.json(); })
+        .then(function(r) {
+          var grid = document.getElementById("bgGrid");
+          var msg = document.getElementById("bgMsg");
+          if (!grid) {
+            return;
+          }
+          grid.innerHTML = "";
+          if (!r.success) {
+            if (msg) { msg.innerText = r.message || "Could not load backgrounds"; }
+            return;
+          }
+
+          (r.backgrounds || []).forEach(function(b) {
+            var img = document.createElement("img");
+            img.className = "bgThumb" + (currentBg && String(currentBg) === String(b.url) ? " selected" : "");
+            img.src = b.url;
+            img.alt = b.file;
+            img.onclick = function() {
+              setSellerBackground(b.file);
+            };
+            grid.appendChild(img);
+          });
+        });
+    }
+
+    function setSellerBackground(file) {
+      var data = new FormData();
+      data.append("file", file);
+      fetch("../backend/set_seller_background.php", { method: "POST", body: data, credentials: "include" })
+        .then(function(res) { return res.json(); })
+        .then(function(r) {
+          var msg = document.getElementById("bgMsg");
+          if (msg) { msg.innerText = r.message || ""; }
+          if (r.success) {
+            loadAccount();
+          }
+        });
+    }
+
+    document.getElementById("sellerPhotoForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      var input = document.getElementById("seller_photo");
+      if (!input || !input.files || input.files.length === 0) {
+        var msg = document.getElementById("sellerProfileMsg");
+        if (msg) { msg.innerText = "Please choose a photo to upload."; }
+        return;
+      }
+      var data = new FormData();
+      data.append("photo", input.files[0]);
+      fetch("../backend/upload_seller_profile_photo.php", { method: "POST", body: data, credentials: "include" })
+        .then(function(res) { return res.json(); })
+        .then(function(r) {
+          var msg = document.getElementById("sellerProfileMsg");
+          if (msg) { msg.innerText = r.message || ""; }
+          if (r.success) {
+            input.value = "";
+            loadAccount();
+          }
+        });
+    });
+
+    document.getElementById("payment_type").addEventListener("input", updatePaymentVisibility);
+
+    document.getElementById("updateForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      var form = new FormData();
+      form.append("name", document.getElementById("name").value);
+      form.append("email", document.getElementById("email").value);
+      form.append("address", document.getElementById("address").value);
+      form.append("payment_brand", document.getElementById("payment_brand").value);
+      form.append("payment_last4", document.getElementById("payment_last4").value);
+
+      fetch("../backend/update_account.php", {
+        method: "POST",
+        body: form,
+        credentials: "include"
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(r) {
+        document.getElementById("msg").innerText = r.message;
+        if (r.success) {
+          loadAccount();
+        }
+      });
+    });
+
+    document.getElementById("deliveryForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      var data = new FormData();
+      data.append("first_name", document.getElementById("first_name").value);
+      data.append("last_name", document.getElementById("last_name").value);
+      data.append("address_line1", document.getElementById("address_line1").value);
+      data.append("address_line2", document.getElementById("address_line2").value);
+      data.append("city", document.getElementById("city").value);
+      data.append("postal_code", document.getElementById("postal_code").value);
+      data.append("country", document.getElementById("country").value);
+      data.append("phone", document.getElementById("phone").value);
+
+      fetch("../backend/update_delivery_info.php", {
+        method: "POST",
+        body: data,
+        credentials: "include"
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(r) {
+        document.getElementById("msg").innerText = r.message || "";
+      });
+    });
+
+    document.getElementById("paymentForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      var data = new FormData();
+      data.append("payment_type", document.getElementById("payment_type").value);
+      data.append("paypal_email", document.getElementById("paypal_email").value);
+      data.append("card_number", document.getElementById("card_number").value);
+      data.append("card_name", document.getElementById("card_name").value);
+      data.append("expiry", document.getElementById("expiry").value);
+      data.append("security_code", document.getElementById("security_code").value);
+
+      fetch("../backend/update_payment_method.php", {
+        method: "POST",
+        body: data,
+        credentials: "include"
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(r) {
+        document.getElementById("payMsg").innerText = r.message || "";
+        if (r.success) {
+          loadAccount();
+        }
+      });
+    });
+
+    document.getElementById("validateBtn").addEventListener("click", function() {
+      var data = new FormData();
+      data.append("payment_type", document.getElementById("payment_type").value);
+      data.append("paypal_email", document.getElementById("paypal_email").value);
+      data.append("card_number", document.getElementById("card_number").value);
+      data.append("card_name", document.getElementById("card_name").value);
+      data.append("expiry", document.getElementById("expiry").value);
+      data.append("security_code", document.getElementById("security_code").value);
+
+      fetch("../backend/validate_purchase.php", {
+        method: "POST",
+        body: data,
+        credentials: "include"
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(r) {
+        document.getElementById("payMsg").innerText = r.message || "";
+      });
+    });
+
+    loadAccount();
+  </script>
+</body>
+</html>

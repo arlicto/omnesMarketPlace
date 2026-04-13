@@ -14,7 +14,7 @@ if ($seller_id <= 0) {
 }
 
 // Get seller info
-$seller_sql = "SELECT id, name FROM users WHERE id=$seller_id AND role='seller'";
+$seller_sql = "SELECT id, name, username, profile_photo, background_image FROM users WHERE id=$seller_id AND role='seller'";
 $seller_result = $conn->query($seller_sql);
 
 if ($seller_result->num_rows === 0) {

@@ -62,6 +62,12 @@ if ((int)$product_row["is_sold"] === 1) {
     exit;
 }
 
+// auctions cannot be purchased directly
+if (strtolower((string)($product_row["sale_type"] ?? "")) === "auction") {
+    echo json_encode(["success" => false, "message" => "Auction items cannot be bought directly"]);
+    exit;
+}
+
 // strict rule: negotiation products require accepted negotiation tied to this buyer
 if ($product_row["sale_type"] === "negotiation") {
     if ($negotiation_id == "") {
