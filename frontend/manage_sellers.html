@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Sellers</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    nav { background: #1f4fd6; padding: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    nav a { color: white; text-decoration: none; margin-right: 12px; font-size: 16px; }
+    .logo { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; background: white; }
+    .authRight { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .box { max-width: 900px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; }
+    input, button { padding: 10px; margin: 6px 0; box-sizing: border-box; }
+    input { width: 100%; }
+    button { background: #2d6cdf; color: white; border: 0; border-radius: 4px; cursor: pointer; }
+    button.secondary { background: #eee; color: #111; }
+    .row { display: flex; gap: 10px; }
+    .row > div { flex: 1; }
+    .muted { color: #555; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { text-align: left; border-bottom: 1px solid #eee; padding: 10px; font-size: 14px; }
+    .danger { background: #dc2626; }
+    .topActions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
+    <a href="index.html">Home</a>
+    <a href="browse.html">Browse</a>
+    <a id="navAlerts" href="notifications.html">Alerts</a>
+    <a id="navCart" href="cart.html">Cart</a>
+    <a id="navAddProduct" href="add_product.html">Add Product</a>
+    <a id="navAccount" href="account.html">My Account</a>
+    <a id="navManageSellers" href="manage_sellers.html">Manage Sellers</a>
+    <a id="navLogin" href="login.html">Login</a>
+    <a id="navRegister" href="register.html">Register</a>
+    <span class="authRight">
+      <a id="navLogout" href="#" onclick="logoutUser()" style="display:none;">Logout</a>
+      <span id="navUser" style="display:none; color:white; font-size:16px;">Hi, User</span>
+    </span>
+  </nav>
+
+  <div class="box">
+    <h2>Manage seller users</h2>
+    <p id="adminMsg" class="muted"></p>
+
+    <h3>Create seller</h3>
+    <form id="createForm">
+      <div class="row">
+        <div><input type="text" id="name" placeholder="Name" required></div>
+        <div><input type="text" id="username" placeholder="Username (e.g. seller2)" required></div>
+      </div>
+      <div class="row">
+        <div><input type="email" id="email" placeholder="Email" required></div>
+        <div><input type="text" id="password" placeholder="Temporary password" required></div>
+      </div>
+      <button type="submit">Create seller</button>
+      <p id="createMsg" class="muted"></p>
+    </form>
+
+    <h3>Seller list</h3>
+    <div class="topActions">
+      <button type="button" id="refreshBtn" class="secondary">Refresh list</button>
+    </div>
+    <div id="listBox"></div>
+  </div>
+
+  <script>
+    function renderAuthNav() {
+      var userId = localStorage.getItem("user_id");
+      var userName = localStorage.getItem("user_name") || "User";
+      var userRole = localStorage.getItem("user_role") || "";
+      var loginLink = document.getElementById("navLogin");
+      var registerLink = document.getElementById("navRegister");
+      var logoutLink = document.getElementById("navLogout");
+      var userText = document.getElementById("navUser");
+      var alertsLink = document.getElementById("navAlerts");
+      var cartLink = document.getElementById("navCart");
+      var addProductLink = document.getElementById("navAddProduct");
+      var accountLink = document.getElementById("navAccount");
+      var manageLink = document.getElementById("navManageSellers");
+
+      if (!loginLink || !registerLink || !logoutLink || !userText) {
+        return;
+      }
+
+      if (userId) {
+        loginLink.style.display = "none";
+        registerLink.style.display = "none";
+        logoutLink.style.display = "inline";
+        userText.style.display = "inline";
+        userText.innerText = "Hi, " + userName;
+
+        if (accountLink) { accountLink.style.display = "inline"; }
+
+        if (addProductLink) {
+          addProductLink.style.display = (userRole === "seller" || userRole === "admin") ? "inline" : "none";
+        }
+
+        if (manageLink) {
+          manageLink.style.display = (userRole === "admin") ? "inline" : "none";
+        }
+
+        if (userRole === "seller") {
+          if (alertsLink) { alertsLink.style.display = "none"; }
+          if (cartLink) { cartLink.style.display = "none"; }
+        } else {
+          if (alertsLink) { alertsLink.style.display = "inline"; }
+          if (cartLink) { cartLink.style.display = "inline"; }
+        }
+      } else {
+        loginLink.style.display = "inline";
+        registerLink.style.display = "inline";
+        logoutLink.style.display = "none";
+        userText.style.display = "none";
+
+        if (alertsLink) { alertsLink.style.display = "none"; }
+        if (addProductLink) { addProductLink.style.display = "none"; }
+        if (accountLink) { accountLink.style.display = "none"; }
+        if (manageLink) { manageLink.style.display = "none"; }
+        if (cartLink) { cartLink.style.display = "inline"; }
+      }
+    }
+
+    function logoutUser() {
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("user_role");
+      alert("Logged out");
+      location.href = "index.html";
+    }
+
+    function requireAdminOrRedirect() {
+      var userId = localStorage.getItem("user_id");
+      var userRole = localStorage.getItem("user_role") || "";
+      if (!userId || userRole !== "admin") {
+        location.href = "index.html";
+        return false;
+      }
+      return true;
+    }
+
+    function renderTable(sellers) {
+      var box = document.getElementById("listBox");
+      if (!box) { return; }
+
+      if (!sellers || sellers.length === 0) {
+        box.innerHTML = "<p class='muted'>No sellers found.</p>";
+        return;
+      }
+
+      var html = "<table>" +
+        "<thead><tr>" +
+          "<th>ID</th>" +
+          "<th>Name</th>" +
+          "<th>Email</th>" +
+          "<th>Username</th>" +
+          "<th>Action</th>" +
+        "</tr></thead><tbody>";
+
+      sellers.forEach(function(s) {
+        html += "<tr>" +
+          "<td>" + s.id + "</td>" +
+          "<td>" + (s.name || "") + "</td>" +
+          "<td>" + (s.email || "") + "</td>" +
+          "<td>" + (s.username || "") + "</td>" +
+          "<td><button class='danger' data-id='" + s.id + "'>Remove</button></td>" +
+        "</tr>";
+      });
+
+      html += "</tbody></table>";
+      box.innerHTML = html;
+
+      var buttons = box.querySelectorAll("button[data-id]");
+      buttons.forEach(function(btn) {
+        btn.onclick = function() {
+          var id = btn.getAttribute("data-id");
+          if (!id) { return; }
+          if (!confirm("Remove this seller user?")) { return; }
+          removeSeller(id);
+        };
+      });
+    }
+
+    function loadSellers() {
+      var adminMsg = document.getElementById("adminMsg");
+      if (adminMsg) { adminMsg.innerText = "Loading..."; }
+
+      fetch("../backend/admin_list_sellers.php", { credentials: "include" })
+        .then(function(res) { return res.json(); })
+        .then(function(r) {
+          if (adminMsg) { adminMsg.innerText = r.message || ""; }
+          if (!r.success) {
+            if (adminMsg) { adminMsg.innerText = r.message || "Could not load sellers"; }
+            return;
+          }
+          if (adminMsg) { adminMsg.innerText = ""; }
+          renderTable(r.sellers || []);
+        })
+        .catch(function() {
+          if (adminMsg) { adminMsg.innerText = "Network error."; }
+        });
+    }
+
+    function removeSeller(userId) {
+      var fd = new FormData();
+      fd.append("user_id", userId);
+
+      fetch("../backend/admin_delete_user.php", { method: "POST", body: fd, credentials: "include" })
+        .then(function(res) { return res.json(); })
+        .then(function(r) {
+          alert(r.message || (r.success ? "Removed" : "Failed"));
+          if (r.success) {
+            loadSellers();
+          }
+        })
+        .catch(function() {
+          alert("Network error.");
+        });
+    }
+
+    document.getElementById("createForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      var msg = document.getElementById("createMsg");
+      if (msg) { msg.innerText = ""; }
+
+      var fd = new FormData();
+      fd.append("name", document.getElementById("name").value);
+      fd.append("email", document.getElementById("email").value);
+      fd.append("username", document.getElementById("username").value);
+      fd.append("password", document.getElementById("password").value);
+
+      fetch("../backend/admin_create_seller.php", { method: "POST", body: fd, credentials: "include" })
+        .then(function(res) { return res.json(); })
+        .then(function(r) {
+          if (msg) { msg.innerText = r.message || ""; }
+          if (r.success) {
+            document.getElementById("createForm").reset();
+            loadSellers();
+          }
+        })
+        .catch(function() {
+          if (msg) { msg.innerText = "Network error."; }
+        });
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", function() {
+      loadSellers();
+    });
+
+    if (requireAdminOrRedirect()) {
+      renderAuthNav();
+      loadSellers();
+    }
+  </script>
+</body>
+</html>

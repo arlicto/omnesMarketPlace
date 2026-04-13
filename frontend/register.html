@@ -38,9 +38,10 @@
     <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
     <a href="index.html">Home</a>
     <a href="browse.html">Browse</a>
-    <a href="notifications.html">Alerts</a>
-    <a href="cart.html">Cart</a>
-    <a href="add_product.html">Add Product</a>
+    <a id="navAlerts" href="notifications.html" style="display:none;">Alerts</a>
+    <a id="navCart" href="cart.html">Cart</a>
+    <a id="navAddProduct" href="add_product.html" style="display:none;">Add Product</a>
+    <a id="navAccount" href="account.html" style="display:none;">My Account</a>
     <a id="navLogin" href="login.html">Login</a>
     <a id="navRegister" href="register.html">Register</a>
     <span class="authRight">
@@ -86,10 +87,15 @@
     function renderAuthNav() {
       var userId = localStorage.getItem("user_id");
       var userName = localStorage.getItem("user_name") || "User";
+      var userRole = localStorage.getItem("user_role") || "";
       var loginLink = document.getElementById("navLogin");
       var registerLink = document.getElementById("navRegister");
       var logoutLink = document.getElementById("navLogout");
       var userText = document.getElementById("navUser");
+      var alertsLink = document.getElementById("navAlerts");
+      var cartLink = document.getElementById("navCart");
+      var addProductLink = document.getElementById("navAddProduct");
+      var accountLink = document.getElementById("navAccount");
 
       if (!loginLink || !registerLink || !logoutLink || !userText) {
         return;
@@ -101,11 +107,28 @@
         logoutLink.style.display = "inline";
         userText.style.display = "inline";
         userText.innerText = "Hi, " + userName;
+
+        if (userRole === "seller") {
+          if (alertsLink) { alertsLink.style.display = "none"; }
+          if (cartLink) { cartLink.style.display = "none"; }
+          if (addProductLink) { addProductLink.style.display = "inline"; }
+          if (accountLink) { accountLink.style.display = "inline"; }
+        } else {
+          if (alertsLink) { alertsLink.style.display = "inline"; }
+          if (cartLink) { cartLink.style.display = "inline"; }
+          if (addProductLink) { addProductLink.style.display = "inline"; }
+          if (accountLink) { accountLink.style.display = "inline"; }
+        }
       } else {
         loginLink.style.display = "inline";
         registerLink.style.display = "inline";
         logoutLink.style.display = "none";
         userText.style.display = "none";
+
+        if (alertsLink) { alertsLink.style.display = "none"; }
+        if (addProductLink) { addProductLink.style.display = "none"; }
+        if (accountLink) { accountLink.style.display = "none"; }
+        if (cartLink) { cartLink.style.display = "inline"; }
       }
     }
 

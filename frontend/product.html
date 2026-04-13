@@ -47,9 +47,9 @@
     <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
     <a href="index.html">Home</a>
     <a href="browse.html">Browse</a>
-    <a href="notifications.html">Alerts</a>
-    <a href="cart.html">Cart</a>
-    <a href="add_product.html">Add Product</a>
+    <a id="navAlerts" href="notifications.html">Alerts</a>
+    <a id="navCart" href="cart.html">Cart</a>
+    <a id="navAddProduct" href="add_product.html">Add Product</a>
     <a id="navLogin" href="login.html">Login</a>
     <a id="navRegister" href="register.html">Register</a>
     <span class="authRight">
@@ -64,12 +64,25 @@
   </div>
 
   <script>
-    // this updates the cart badge count from localStorage
+    // this updates the cart badge count from server cart
     function updateCartBadge() {
-      var cart = JSON.parse(localStorage.getItem("cart")) || [];
       var badge = document.getElementById("cartBadge");
       if (badge) {
-        badge.innerText = "Cart: " + cart.length;
+        var userId = localStorage.getItem("user_id");
+        if (!userId) {
+          badge.innerText = "Cart: 0";
+          return;
+        }
+
+        fetch("../backend/get_cart.php", { credentials: "include" })
+          .then(function(res) { return res.json(); })
+          .then(function(r) {
+            var count = (r && r.success && Array.isArray(r.items)) ? r.items.length : 0;
+            badge.innerText = "Cart: " + count;
+          })
+          .catch(function() {
+            badge.innerText = "Cart: 0";
+          });
       }
     }
 
@@ -105,23 +118,23 @@
           return;
         }
 
-        box.innerHTML =
-          "<h2>" + product.name + "</h2>" +
-          "<div class='slider'>" +
-            "<img id='mainProductImage' src='' alt='product'>" +
-            "<div class='slideBtns'>" +
-              "<button class='btn' id='prevSlideBtn'>Prev</button>" +
-              "<button class='btn' id='nextSlideBtn'>Next</button>" +
-            "</div>" +
-          "</div>" +
-          "<div id='videoBox' class='videoBox'></div>" +
-          "<p>" + product.description + "</p>" +
-          "<p><b>Price:</b> €" + product.price + "</p>" +
-          "<button class='btn' id='addBtn'>Add to Cart</button>" +
-          "<button class='btn' id='deleteBtn' style='display:none; background:#d9534f; margin-left:8px;'>Delete Product (Admin)</button>" +
+        var sellerName =
+          product.seller_name != null && String(product.seller_name).trim() !== ""
+            ? String(product.seller_name).trim()
+            : "-";
+
+        var isNegotiationProduct = String(product.sale_type || "").toLowerCase() === "negotiation";
+        var isAuctionProduct = String(product.sale_type || "").toLowerCase() === "auction";
+
+        var negotiationHtml =
           "<div class='nbox'>" +
             "<h3>Seller-Buyer Negotiation</h3>" +
             "<p class='small'>After starting, use DM chat page for counter offers.</p>" +
+            "<div id='clauseBox' style='margin-bottom:10px; border:1px solid #eee; padding:10px; border-radius:6px;'>" +
+              "<p class='small'><b>Offer Clause:</b> If you make an offer and the seller accepts it, you are legally obligated to purchase the item.</p>" +
+              "<label class='small'><input type='checkbox' id='clauseCheck'> I accept this clause</label>" +
+              "<button class='btn' id='acceptClauseBtn' style='margin-left:8px;'>Accept</button>" +
+            "</div>" +
             "<p id='negStatus'>Status: No negotiation yet</p>" +
             "<p id='negOffer'>Last Offer: -</p>" +
             "<p id='negRound'>Rounds: 0 / 5</p>" +
@@ -138,119 +151,97 @@
             "</div>" +
           "</div>";
 
+        var auctionHtml =
+          "<div class='nbox'>" +
+            "<h3>Auction</h3>" +
+            "<p class='small'>Enter your maximum bid. Omnes MarketPlace will automatically bid €1 above others up to your maximum.</p>" +
+            "<p id='auctionHighest'>Current Price: -</p>" +
+            "<p id='auctionWindow' class='small'></p>" +
+            "<input type='number' step='0.01' id='bidAmount' placeholder='Your maximum bid'>" +
+            "<button class='btn' id='placeBidBtn'>Save Maximum Bid</button>" +
+            "<p id='auctionMsg' class='small'></p>" +
+            "<div id='bidList'></div>" +
+            "<button class='btn' id='endAuctionBtn' style='display:none; background:#d9534f; margin-top:10px;'>End Auction (Seller/Admin)</button>" +
+          "</div>";
+
+        box.innerHTML =
+          "<h2>" + product.name + "</h2>" +
+          "<div class='slider'>" +
+            "<img id='mainProductImage' src='' alt='product'>" +
+            "<div class='slideBtns'>" +
+              "<button class='btn' id='prevSlideBtn'>Prev</button>" +
+              "<button class='btn' id='nextSlideBtn'>Next</button>" +
+            "</div>" +
+          "</div>" +
+          "<div id='videoBox' class='videoBox'></div>" +
+          "<p>" + product.description + "</p>" +
+          "<p><b>Seller:</b> " + sellerName + "</p>" +
+          "<p><b>Price:</b> €" + product.price + "</p>" +
+          "<button class='btn' id='addBtn'>Add to Cart</button>" +
+          "<button class='btn' id='deleteBtn' style='display:none; background:#d9534f; margin-left:8px;'>Delete Product (Admin)</button>" +
+          (isNegotiationProduct ? negotiationHtml : (isAuctionProduct ? auctionHtml : ""));
+
         document.getElementById("addBtn").onclick = function() {
-          // this stores product in localStorage cart
-          var cart = JSON.parse(localStorage.getItem("cart")) || [];
-          cart.push(product);
-          localStorage.setItem("cart", JSON.stringify(cart));
-          updateCartBadge();
-          alert("Product added to cart");
-        };
+          var userId = localStorage.getItem("user_id");
+          if (!userId) {
+            alert("Please login first.");
+            location.href = "login.html";
+            return;
+          }
 
-        // this prepares image list for slider
-        var imageList = [];
-        if (product.images && product.images.trim() !== "") {
-          imageList = product.images.split(",").map(function(x) { return x.trim(); }).filter(function(x) { return x !== ""; });
-        }
-        if (imageList.length === 0 && product.image) {
-          imageList.push(product.image);
-        }
-        if (imageList.length === 0) {
-          imageList.push("https://via.placeholder.com/700x400?text=No+Image");
-        }
+          var saleType = String(product.sale_type || "").toLowerCase();
+          if (saleType !== "buy_now") {
+            alert("This item is not available for immediate purchase.");
+            return;
+          }
 
-        var currentSlide = 0;
-        var mainImg = document.getElementById("mainProductImage");
-
-        // this renders current slide image
-        function showSlide(i) {
-          if (i < 0) { i = imageList.length - 1; }
-          if (i >= imageList.length) { i = 0; }
-          currentSlide = i;
-          mainImg.style.opacity = 0.2;
-          setTimeout(function() {
-            mainImg.src = imageList[currentSlide];
-            mainImg.style.opacity = 1;
-          }, 120);
-        }
-
-        showSlide(0);
-
-        // this moves slider manually
-        document.getElementById("prevSlideBtn").onclick = function() {
-          showSlide(currentSlide - 1);
-        };
-        document.getElementById("nextSlideBtn").onclick = function() {
-          showSlide(currentSlide + 1);
-        };
-
-        // this auto slides images smoothly
-        var intervalId;
-        if (imageList.length > 1) {
-          intervalId = setInterval(function() {
-            showSlide(currentSlide + 1);
-          }, 3000);
-
-          // pause on hover
-          mainImg.addEventListener('mouseenter', function() {
-            clearInterval(intervalId);
+          var data = new FormData();
+          data.append("product_id", product.id);
+          fetch("../backend/buy_product.php", {
+            method: "POST",
+            body: data,
+            credentials: "include"
+          })
+          .then(function(res) { return res.json(); })
+          .then(function(r) {
+            if (!r.success) {
+              alert(r.message || "Could not buy product");
+              return;
+            }
+            updateCartBadge();
+            alert("Purchase successful");
           });
-          mainImg.addEventListener('mouseleave', function() {
-            intervalId = setInterval(function() {
-              showSlide(currentSlide + 1);
-            }, 3000);
-          });
-        }
+        };
 
-        // this shows one product video if available
-        if (product.video && product.video.trim() !== "") {
-          document.getElementById("videoBox").innerHTML =
-            "<h3>Product Video</h3>" +
-            "<video controls>" +
-              "<source src='" + product.video + "'>" +
-            "</video>";
-        }
-
-        var storedBuyer = localStorage.getItem("user_id");
+        var storedUserId = localStorage.getItem("user_id");
         var buyerId =
-          storedBuyer != null && String(storedBuyer).trim() !== ""
-            ? String(storedBuyer).trim()
+          storedUserId != null && String(storedUserId).trim() !== ""
+            ? String(storedUserId).trim()
             : null;
-
-        var sellerRaw =
-          product.seller_id != null && String(product.seller_id).trim() !== ""
-            ? product.seller_id
-            : product.sellerId != null && String(product.sellerId).trim() !== ""
-              ? product.sellerId
-              : null;
-        var sellerId =
-          sellerRaw != null && String(sellerRaw).trim() !== ""
-            ? String(sellerRaw).trim()
-            : null;
-
         var isLoggedIn = buyerId !== null;
         var userRole = isLoggedIn ? (localStorage.getItem("user_role") || "buyer") : "buyer";
-        var role = userRole;
-        // keep URL support for seller demo if needed
-        if (params.get("role") === "seller") {
-          role = "seller";
-        }
-        var currentNegotiationId = "";
 
-        var negNoticeSetup = document.getElementById("negNotice");
-        if (role !== "seller" && !sellerId) {
-          document.getElementById("sendOfferBtn").disabled = true;
-          document.getElementById("offerPrice").disabled = true;
-          negNoticeSetup.innerText =
-            "Negotiation unavailable: this product has no seller assigned.";
-        } else if (role !== "seller" && !buyerId) {
-          document.getElementById("sendOfferBtn").disabled = true;
-          document.getElementById("offerPrice").disabled = true;
-          negNoticeSetup.innerText =
-            "Log in as a buyer to start or view your negotiation.";
+        // only buyers can add to cart
+        if (isLoggedIn && (userRole === "seller" || userRole === "admin")) {
+          var addBtn = document.getElementById("addBtn");
+          if (addBtn) {
+            addBtn.disabled = true;
+            addBtn.style.background = "#777";
+            addBtn.style.cursor = "not-allowed";
+            addBtn.onclick = function() {
+              alert("Only buyers can add products to cart.");
+            };
+          }
         }
 
-        // admin should not see negotiation (only buyer and seller)
+        // auction products are not added to cart (bid instead)
+        if (isAuctionProduct) {
+          var addBtnAuction = document.getElementById("addBtn");
+          if (addBtnAuction) {
+            addBtnAuction.style.display = "none";
+          }
+        }
+
         if (isLoggedIn && userRole === "admin") {
           // this shows admin delete button
           document.getElementById("deleteBtn").style.display = "inline-block";
@@ -277,7 +268,251 @@
               }
             });
           };
+        }
 
+        // this prepares image list for slider
+        var imageList = [];
+        if (product.images && String(product.images).trim() !== "") {
+          imageList = String(product.images)
+            .split(",")
+            .map(function(x) { return x.trim(); })
+            .filter(function(x) { return x !== ""; });
+        }
+        if (imageList.length === 0 && product.image) {
+          imageList.push(product.image);
+        }
+        if (imageList.length === 0) {
+          imageList.push("https://via.placeholder.com/700x400?text=No+Image");
+        }
+
+        var currentSlide = 0;
+        var mainImg = document.getElementById("mainProductImage");
+
+        // this renders current slide image
+        function showSlide(i) {
+          if (!mainImg) {
+            return;
+          }
+          if (i < 0) {
+            i = imageList.length - 1;
+          }
+          if (i >= imageList.length) {
+            i = 0;
+          }
+          currentSlide = i;
+          mainImg.src = imageList[currentSlide];
+        }
+
+        showSlide(0);
+
+        // this moves slider manually
+        document.getElementById("prevSlideBtn").onclick = function() {
+          showSlide(currentSlide - 1);
+        };
+        document.getElementById("nextSlideBtn").onclick = function() {
+          showSlide(currentSlide + 1);
+        };
+
+        // this shows one product video if available
+        if (product.video && product.video.trim() !== "") {
+          document.getElementById("videoBox").innerHTML =
+            "<h3>Product Video</h3>" +
+            "<video controls>" +
+              "<source src='" + product.video + "'>" +
+            "</video>";
+        }
+
+        // auction UI
+        if (isAuctionProduct) {
+          function loadAuction() {
+            fetch("../backend/get_auction_bids.php?product_id=" + encodeURIComponent(product.id), { credentials: "include" })
+              .then(function(res) { return res.json(); })
+              .then(function(d) {
+                if (!d || !d.success) {
+                  var m = document.getElementById("auctionMsg");
+                  if (m) { m.innerText = d && d.message ? d.message : "Could not load bids"; }
+                  return;
+                }
+                var txt = "Current Price: -";
+                if (d.highest && d.highest.amount != null) {
+                  txt = "Current Price: €" + d.highest.amount + (d.highest.bidder_name ? (" (" + d.highest.bidder_name + ")") : "");
+                }
+                var h = document.getElementById("auctionHighest");
+                if (h) { h.innerText = txt; }
+
+                var w = document.getElementById("auctionWindow");
+                if (w) {
+                  var ws = d.auction_start ? ("Start: " + d.auction_start) : "";
+                  var we = d.auction_end ? ("End: " + d.auction_end) : "";
+                  var openTxt = d.is_open ? "Open" : "Closed";
+                  var mid = (ws && we) ? (ws + " | " + we) : (ws || we);
+                  w.innerText = mid ? ("Auction window: " + mid + " (" + openTxt + ")") : ("Auction status: " + openTxt);
+                }
+
+                var bidBtn = document.getElementById("placeBidBtn");
+                var bidIn = document.getElementById("bidAmount");
+                if (bidBtn && bidIn) {
+                  if (!d.is_open) {
+                    bidBtn.disabled = true;
+                    bidIn.disabled = true;
+                  }
+                }
+              });
+          }
+
+          loadAuction();
+
+          // seller/admin can end auction
+          if (!isLoggedIn || (userRole !== "seller" && userRole !== "admin")) {
+            var endBtnOff = document.getElementById("endAuctionBtn");
+            if (endBtnOff) {
+              endBtnOff.disabled = true;
+              endBtnOff.style.background = "#777";
+              endBtnOff.style.cursor = "not-allowed";
+            }
+          } else {
+            document.getElementById("endAuctionBtn").onclick = function() {
+              var ok = confirm("End this auction and sell to the highest bidder?");
+              if (!ok) {
+                return;
+              }
+              var form = new FormData();
+              form.append("product_id", product.id);
+              fetch("../backend/end_auction.php", { method: "POST", body: form, credentials: "include" })
+                .then(function(res) { return res.json(); })
+                .then(function(r) {
+                  var m = document.getElementById("auctionMsg");
+                  if (m) { m.innerText = r.message; }
+                  if (r.success) {
+                    loadAuction();
+                  }
+                });
+            };
+          }
+
+          // only buyers can bid
+          if (!isLoggedIn || userRole !== "buyer") {
+            var bidBtn = document.getElementById("placeBidBtn");
+            var bidIn = document.getElementById("bidAmount");
+            if (bidBtn) { bidBtn.disabled = true; }
+            if (bidIn) { bidIn.disabled = true; }
+            var am = document.getElementById("auctionMsg");
+            if (am) { am.innerText = "Log in as a buyer to place bids."; }
+          } else {
+            document.getElementById("placeBidBtn").onclick = function() {
+              var amt = document.getElementById("bidAmount").value;
+              if (!amt) {
+                document.getElementById("auctionMsg").innerText = "Enter your maximum bid.";
+                return;
+              }
+              var form = new FormData();
+              form.append("product_id", product.id);
+              form.append("amount", amt);
+              fetch("../backend/place_bid.php", { method: "POST", body: form, credentials: "include" })
+                .then(function(res) { return res.json(); })
+                .then(function(r) {
+                  document.getElementById("auctionMsg").innerText = r.message;
+                  if (r.success) {
+                    document.getElementById("bidAmount").value = "";
+                    loadAuction();
+                  }
+                });
+            };
+          }
+
+          return;
+        }
+
+        // negotiation UI is only for negotiation products
+        if (!isNegotiationProduct) {
+          return;
+        }
+
+        // clause acceptance (UI side)
+        function setOfferControlsEnabled(enabled) {
+          var b = document.getElementById("sendOfferBtn");
+          var i = document.getElementById("offerPrice");
+          if (b) { b.disabled = !enabled; }
+          if (i) { i.disabled = !enabled; }
+        }
+
+        function loadClauseState() {
+          fetch("../backend/get_account.php", { credentials: "include" })
+            .then(function(res) { return res.json(); })
+            .then(function(r) {
+              var box = document.getElementById("clauseBox");
+              if (!box) {
+                return;
+              }
+              if (!r.success || !r.user) {
+                setOfferControlsEnabled(false);
+                return;
+              }
+              var accepted = String(r.user.offer_clause_accepted) === "1";
+              if (accepted) {
+                box.style.display = "none";
+                setOfferControlsEnabled(true);
+              } else {
+                box.style.display = "block";
+                setOfferControlsEnabled(false);
+              }
+            });
+        }
+
+        var acceptBtn = document.getElementById("acceptClauseBtn");
+        if (acceptBtn) {
+          acceptBtn.onclick = function() {
+            var check = document.getElementById("clauseCheck");
+            if (!check || !check.checked) {
+              alert("Please tick the checkbox to accept the clause.");
+              return;
+            }
+            fetch("../backend/accept_offer_clause.php", { method: "POST", credentials: "include" })
+              .then(function(res) { return res.json(); })
+              .then(function(r) {
+                if (!r.success) {
+                  alert(r.message || "Could not record acceptance");
+                  return;
+                }
+                loadClauseState();
+              });
+          };
+        }
+
+        loadClauseState();
+
+        var sellerRaw =
+          product.seller_id != null && String(product.seller_id).trim() !== ""
+            ? product.seller_id
+            : product.sellerId != null && String(product.sellerId).trim() !== ""
+              ? product.sellerId
+              : null;
+        var sellerId =
+          sellerRaw != null && String(sellerRaw).trim() !== ""
+            ? String(sellerRaw).trim()
+            : null;
+        var role = userRole;
+        // keep URL support for seller demo if needed
+        if (params.get("role") === "seller") {
+          role = "seller";
+        }
+        var currentNegotiationId = "";
+
+        var negNoticeSetup = document.getElementById("negNotice");
+        if (role !== "seller" && !sellerId) {
+          document.getElementById("sendOfferBtn").disabled = true;
+          document.getElementById("offerPrice").disabled = true;
+          negNoticeSetup.innerText =
+            "Negotiation unavailable: this product has no seller assigned.";
+        } else if (role !== "seller" && !buyerId) {
+          document.getElementById("sendOfferBtn").disabled = true;
+          document.getElementById("offerPrice").disabled = true;
+          negNoticeSetup.innerText =
+            "Log in as a buyer to start or view your negotiation.";
+        }
+
+        // admin should not see negotiation (only buyer and seller)
+        if (isLoggedIn && userRole === "admin") {
           document.querySelector(".nbox").innerHTML =
             "<h3>Seller-Buyer Negotiation</h3><p class='small'>Only buyer and seller can use negotiation.</p>";
           return;
@@ -460,10 +695,15 @@
     function renderAuthNav() {
       var userId = localStorage.getItem("user_id");
       var userName = localStorage.getItem("user_name") || "User";
+      var userRole = localStorage.getItem("user_role") || "";
       var loginLink = document.getElementById("navLogin");
       var registerLink = document.getElementById("navRegister");
       var logoutLink = document.getElementById("navLogout");
       var userText = document.getElementById("navUser");
+      var alertsLink = document.getElementById("navAlerts");
+      var cartLink = document.getElementById("navCart");
+      var cartBadge = document.getElementById("cartBadge");
+      var addProductLink = document.getElementById("navAddProduct");
 
       if (!loginLink || !registerLink || !logoutLink || !userText) {
         return;
@@ -475,11 +715,30 @@
         logoutLink.style.display = "inline";
         userText.style.display = "inline";
         userText.innerText = "Hi, " + userName;
+
+        if (addProductLink) {
+          addProductLink.style.display = (userRole === "seller" || userRole === "admin") ? "inline" : "none";
+        }
+
+        if (userRole === "seller") {
+          if (alertsLink) { alertsLink.style.display = "none"; }
+          if (cartLink) { cartLink.style.display = "none"; }
+          if (cartBadge) { cartBadge.style.display = "none"; }
+        } else {
+          if (alertsLink) { alertsLink.style.display = "inline"; }
+          if (cartLink) { cartLink.style.display = "inline"; }
+          if (cartBadge) { cartBadge.style.display = "inline"; }
+        }
       } else {
         loginLink.style.display = "inline";
         registerLink.style.display = "inline";
         logoutLink.style.display = "none";
         userText.style.display = "none";
+
+        if (alertsLink) { alertsLink.style.display = "none"; }
+        if (addProductLink) { addProductLink.style.display = "none"; }
+        if (cartLink) { cartLink.style.display = "inline"; }
+        if (cartBadge) { cartBadge.style.display = "inline"; }
       }
     }
 

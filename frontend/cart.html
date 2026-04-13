@@ -41,9 +41,10 @@
     <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
     <a href="index.html">Home</a>
     <a href="browse.html">Browse</a>
-    <a href="notifications.html">Alerts</a>
-    <a href="cart.html">Cart</a>
-    <a href="add_product.html">Add Product</a>
+    <a id="navAlerts" href="notifications.html">Alerts</a>
+    <a id="navCart" href="cart.html">Cart</a>
+    <a id="navAddProduct" href="add_product.html">Add Product</a>
+    <a id="navAccount" href="account.html">My Account</a>
     <a id="navLogin" href="login.html">Login</a>
     <a id="navRegister" href="register.html">Register</a>
     <span class="authRight">
@@ -55,12 +56,11 @@
   <div class="box">
     <h2>Your Cart</h2>
     <div id="cartList"></div>
-    <p id="totalText"><b>Total: €0</b></p>
-    <button class="btn" onclick="buyNow()">Buy Now</button>
+    <p id="totalText"><b>Subtotal: €0</b></p>
   </div>
 
   <script>
-    var cart = JSON.parse(localStorage.getItem("cart")) || [];
+    var cart = [];
 
     // this gets first image from images list
     function getMainImage(product) {
@@ -71,7 +71,7 @@
       return product.image || "https://via.placeholder.com/100x100?text=No+Image";
     }
 
-    // this renders cart items and total
+    // this renders cart items and subtotal
     function renderCart() {
       var list = document.getElementById("cartList");
       var total = 0;
@@ -99,8 +99,12 @@
           thumb.alt = cart[i].name ? String(cart[i].name) : "Product";
 
           var label = document.createElement("span");
-          label.textContent =
-            String(cart[i].name || "") + " - €" + String(cart[i].price != null ? cart[i].price : "");
+          var nameTxt = String(cart[i].name || "");
+          var descTxt = String(cart[i].description || "");
+          if (descTxt.length > 60) {
+            descTxt = descTxt.slice(0, 60) + "...";
+          }
+          label.textContent = nameTxt + (descTxt ? " - " + descTxt : "") + " - €" + String(cart[i].price != null ? cart[i].price : "");
 
           left.appendChild(thumb);
           left.appendChild(label);
@@ -124,57 +128,47 @@
       var totalEl = document.getElementById("totalText");
       totalEl.textContent = "";
       var totalBold = document.createElement("b");
-      totalBold.textContent = "Total: €" + Number(total).toFixed(2);
+      totalBold.textContent = "Subtotal: €" + Number(total).toFixed(2);
       totalEl.appendChild(totalBold);
     }
 
-    // this removes one item from cart by index
-    function removeItem(index) {
-      cart.splice(index, 1);
-      localStorage.setItem("cart", JSON.stringify(cart));
-      renderCart();
+    function loadCart() {
+      fetch("../backend/get_cart.php", { credentials: "include" })
+        .then(function(res) { return res.json(); })
+        .then(function(r) {
+          if (!r.success) {
+            cart = [];
+            renderCart();
+            return;
+          }
+          cart = Array.isArray(r.items) ? r.items : [];
+          renderCart();
+        });
     }
 
-    renderCart();
-
-    // this sends buy request to backend
-    function buyNow() {
-      if (cart.length === 0) {
-        alert("Cart is empty");
+    // this removes one item from cart by product id
+    function removeItem(index) {
+      if (!cart[index] || cart[index].id == null) {
         return;
       }
-      // this buys all products one by one
-      var done = 0;
-      var failed = 0;
-
-      for (var i = 0; i < cart.length; i++) {
-        var data = new FormData();
-        data.append("product_id", cart[i].id);
-
-        fetch("../backend/buy_product.php", {
-          method: "POST",
-          body: data
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(msg) {
-          if (msg.success) {
-            done = done + 1;
-          } else {
-            failed = failed + 1;
-          }
-
-          if (done + failed === cart.length) {
-            if (done > 0) {
-              localStorage.removeItem("cart");
-              alert("Checkout finished. Bought: " + done + ", Failed: " + failed);
-              location.reload();
-            } else {
-              alert("Checkout failed. Please login first.");
-            }
-          }
-        });
-      }
+      var data = new FormData();
+      data.append("product_id", cart[index].id);
+      fetch("../backend/remove_cart_item.php", {
+        method: "POST",
+        body: data,
+        credentials: "include"
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(r) {
+        if (!r.success) {
+          alert(r.message || "Could not remove item");
+          return;
+        }
+        loadCart();
+      });
     }
+
+    loadCart();
   </script>
 
   <script>
@@ -182,10 +176,15 @@
     function renderAuthNav() {
       var userId = localStorage.getItem("user_id");
       var userName = localStorage.getItem("user_name") || "User";
+      var userRole = localStorage.getItem("user_role") || "";
       var loginLink = document.getElementById("navLogin");
       var registerLink = document.getElementById("navRegister");
       var logoutLink = document.getElementById("navLogout");
       var userText = document.getElementById("navUser");
+      var alertsLink = document.getElementById("navAlerts");
+      var cartLink = document.getElementById("navCart");
+      var addProductLink = document.getElementById("navAddProduct");
+      var accountLink = document.getElementById("navAccount");
 
       if (!loginLink || !registerLink || !logoutLink || !userText) {
         return;
@@ -197,11 +196,29 @@
         logoutLink.style.display = "inline";
         userText.style.display = "inline";
         userText.innerText = "Hi, " + userName;
+
+        if (addProductLink) {
+          addProductLink.style.display = (userRole === "seller" || userRole === "admin") ? "inline" : "none";
+        }
+        if (accountLink) { accountLink.style.display = "inline"; }
+
+        if (userRole === "seller") {
+          if (alertsLink) { alertsLink.style.display = "none"; }
+          if (cartLink) { cartLink.style.display = "none"; }
+        } else {
+          if (alertsLink) { alertsLink.style.display = "inline"; }
+          if (cartLink) { cartLink.style.display = "inline"; }
+        }
       } else {
         loginLink.style.display = "inline";
         registerLink.style.display = "inline";
         logoutLink.style.display = "none";
         userText.style.display = "none";
+
+        if (alertsLink) { alertsLink.style.display = "none"; }
+        if (addProductLink) { addProductLink.style.display = "none"; }
+        if (accountLink) { accountLink.style.display = "none"; }
+        if (cartLink) { cartLink.style.display = "inline"; }
       }
     }
 

@@ -44,9 +44,10 @@
     <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
     <a href="index.html">Home</a>
     <a href="browse.html">Browse</a>
-    <a href="notifications.html">Alerts</a>
-    <a href="cart.html">Cart</a>
-    <a href="add_product.html">Add Product</a>
+    <a id="navAlerts" href="notifications.html">Alerts</a>
+    <a id="navCart" href="cart.html">Cart</a>
+    <a id="navAddProduct" href="add_product.html">Add Product</a>
+    <a id="navAccount" href="account.html">My Account</a>
     <a id="navLogin" href="login.html">Login</a>
     <a id="navRegister" href="register.html">Register</a>
     <span id="cartBadge" style="color:white; font-size:14px; background:rgba(255,255,255,0.18); padding:3px 8px; border-radius:999px;">Cart: 0</span>
@@ -130,11 +131,26 @@
 
             var btn = document.createElement("button");
             btn.className = "btn";
-            btn.innerText = "Add to Cart";
-            btn.onclick = function(e) {
-              e.stopPropagation();
-              addToCart(p);
-            };
+            var saleType = String(p.sale_type || "").toLowerCase();
+            if (saleType === "auction") {
+              btn.innerText = "Bid";
+              btn.onclick = function(e) {
+                e.stopPropagation();
+                location.href = "product.html?id=" + p.id;
+              };
+            } else if (saleType === "negotiation") {
+              btn.innerText = "Negotiate";
+              btn.onclick = function(e) {
+                e.stopPropagation();
+                location.href = "product.html?id=" + p.id;
+              };
+            } else {
+              btn.innerText = "Add to Cart";
+              btn.onclick = function(e) {
+                e.stopPropagation();
+                addToCart(p);
+              };
+            }
 
             row.appendChild(viewBtn);
             row.appendChild(btn);
@@ -151,7 +167,7 @@
     fillSection("productsHighEnd", "high-end");
     fillSection("productsRegular", "regular");
 
-    // this adds selected product into localStorage cart
+    // this buys selected product immediately (buy_now only)
     function addToCart(product) {
       // simple frontend auth check
       var userId = localStorage.getItem("user_id");
@@ -161,19 +177,50 @@
         return;
       }
 
-      var cart = JSON.parse(localStorage.getItem("cart")) || [];
-      cart.push(product);
-      localStorage.setItem("cart", JSON.stringify(cart));
-      updateCartBadge();
-      alert("Product added to cart");
+      var saleType = String(product.sale_type || "").toLowerCase();
+      if (saleType !== "buy_now") {
+        alert("This item is not available for immediate purchase.");
+        return;
+      }
+
+      var data = new FormData();
+      data.append("product_id", product.id);
+
+      fetch("../backend/buy_product.php", {
+        method: "POST",
+        body: data,
+        credentials: "include"
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(r) {
+        if (!r.success) {
+          alert(r.message || "Could not buy product");
+          return;
+        }
+        updateCartBadge();
+        alert("Purchase successful");
+      });
     }
 
-    // this updates cart count badge
+    // this updates cart count badge from server cart
     function updateCartBadge() {
-      var cart = JSON.parse(localStorage.getItem("cart")) || [];
       var badge = document.getElementById("cartBadge");
       if (badge) {
-        badge.innerText = "Cart: " + cart.length;
+        var userId = localStorage.getItem("user_id");
+        if (!userId) {
+          badge.innerText = "Cart: 0";
+          return;
+        }
+
+        fetch("../backend/get_cart.php", { credentials: "include" })
+          .then(function(res) { return res.json(); })
+          .then(function(r) {
+            var count = (r && r.success && Array.isArray(r.items)) ? r.items.length : 0;
+            badge.innerText = "Cart: " + count;
+          })
+          .catch(function() {
+            badge.innerText = "Cart: 0";
+          });
       }
     }
 
@@ -185,10 +232,16 @@
     function renderAuthNav() {
       var userId = localStorage.getItem("user_id");
       var userName = localStorage.getItem("user_name") || "User";
+      var userRole = localStorage.getItem("user_role") || "";
       var loginLink = document.getElementById("navLogin");
       var registerLink = document.getElementById("navRegister");
       var logoutLink = document.getElementById("navLogout");
       var userText = document.getElementById("navUser");
+      var alertsLink = document.getElementById("navAlerts");
+      var cartLink = document.getElementById("navCart");
+      var cartBadge = document.getElementById("cartBadge");
+      var addProductLink = document.getElementById("navAddProduct");
+      var accountLink = document.getElementById("navAccount");
 
       if (!loginLink || !registerLink || !logoutLink || !userText) {
         return;
@@ -200,11 +253,33 @@
         logoutLink.style.display = "inline";
         userText.style.display = "inline";
         userText.innerText = "Hi, " + userName;
+
+        if (addProductLink) {
+          addProductLink.style.display = (userRole === "seller" || userRole === "admin") ? "inline" : "none";
+        }
+
+        if (userRole === "seller") {
+          if (alertsLink) { alertsLink.style.display = "none"; }
+          if (cartLink) { cartLink.style.display = "none"; }
+          if (cartBadge) { cartBadge.style.display = "none"; }
+          if (accountLink) { accountLink.style.display = "inline"; }
+        } else {
+          if (alertsLink) { alertsLink.style.display = "inline"; }
+          if (cartLink) { cartLink.style.display = "inline"; }
+          if (cartBadge) { cartBadge.style.display = "inline"; }
+          if (accountLink) { accountLink.style.display = "inline"; }
+        }
       } else {
         loginLink.style.display = "inline";
         registerLink.style.display = "inline";
         logoutLink.style.display = "none";
         userText.style.display = "none";
+
+        if (alertsLink) { alertsLink.style.display = "none"; }
+        if (addProductLink) { addProductLink.style.display = "none"; }
+        if (accountLink) { accountLink.style.display = "none"; }
+        if (cartLink) { cartLink.style.display = "inline"; }
+        if (cartBadge) { cartBadge.style.display = "inline"; }
       }
     }
 

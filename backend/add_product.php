@@ -22,6 +22,8 @@ $images = $_POST["images"] ?? "";
 $video = $_POST["video"] ?? "";
 $category = trim($_POST["category"] ?? "");
 $sale_type = $_POST["sale_type"] ?? "buy_now";
+$auction_start = trim($_POST["auction_start"] ?? "");
+$auction_end = trim($_POST["auction_end"] ?? "");
 
 $allowed_categories = ["rare", "high-end", "regular"];
 if ($category === "" || !in_array($category, $allowed_categories, true)) {
@@ -44,6 +46,28 @@ if (!in_array($sale_type, $allowed_sale_types)) {
     exit;
 }
 
+if ($sale_type !== "auction") {
+    $auction_start = "";
+    $auction_end = "";
+}
+
+if ($sale_type === "auction") {
+    if ($auction_start !== "" && strtotime($auction_start) === false) {
+        echo json_encode(["success" => false, "message" => "Invalid auction_start"]);
+        exit;
+    }
+    if ($auction_end !== "" && strtotime($auction_end) === false) {
+        echo json_encode(["success" => false, "message" => "Invalid auction_end"]);
+        exit;
+    }
+    if ($auction_start !== "" && $auction_end !== "") {
+        if (strtotime($auction_end) <= strtotime($auction_start)) {
+            echo json_encode(["success" => false, "message" => "auction_end must be after auction_start"]);
+            exit;
+        }
+    }
+}
+
 $category = $conn->real_escape_string($category);
 
 // this sets main image from images list if single image is empty
@@ -55,9 +79,12 @@ if ($image == "" && $images != "") {
 // owner for negotiation routing (logged-in admin or seller)
 $seller_id = $session_uid;
 
+$auction_start_sql = $auction_start !== "" ? ("'" . $conn->real_escape_string($auction_start) . "'") : "NULL";
+$auction_end_sql = $auction_end !== "" ? ("'" . $conn->real_escape_string($auction_end) . "'") : "NULL";
+
 // this inserts new product
-$sql = "INSERT INTO products (name, description, price, image, images, video, category, sale_type, seller_id)
-        VALUES ('$name', '$description', '$price', '$image', '$images', '$video', '$category', '$sale_type', '$seller_id')";
+$sql = "INSERT INTO products (name, description, price, image, images, video, category, sale_type, seller_id, auction_start, auction_end)
+        VALUES ('$name', '$description', '$price', '$image', '$images', '$video', '$category', '$sale_type', '$seller_id', $auction_start_sql, $auction_end_sql)";
 
 if ($conn->query($sql)) {
     echo json_encode(["success" => true, "message" => "Product added"]);

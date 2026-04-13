@@ -6,12 +6,12 @@ include "db.php";
 $allowed_category = ["rare", "high-end", "regular"];
 $cat = isset($_GET["category"]) ? trim($_GET["category"]) : "";
 
-$sql = "SELECT * FROM products WHERE is_sold=0";
+$sql = "SELECT p.*, u.name AS seller_name FROM products p LEFT JOIN users u ON p.seller_id = u.id WHERE p.is_sold=0";
 if ($cat !== "" && in_array($cat, $allowed_category, true)) {
     $c = $conn->real_escape_string($cat);
-    $sql .= " AND category='$c'";
+    $sql .= " AND p.category='$c'";
 }
-$sql .= " ORDER BY id DESC";
+$sql .= " ORDER BY p.id DESC";
 
 $result = $conn->query($sql);
 

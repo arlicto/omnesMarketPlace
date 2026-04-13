@@ -16,9 +16,11 @@
     button { background: #2d6cdf; color: white; border: 0; border-radius: 4px; cursor: pointer; }
     .muted { color: #555; font-size: 14px; }
     .block { margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; }
-    .card { border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin: 8px 0; background: #fafafa; }
+    .card { border: 1px solid #e1e1e1; border-radius: 8px; padding: 10px; margin: 10px 0; background: #fff; }
     .card h4 { margin: 0 0 6px 0; }
     .card p { margin: 4px 0; font-size: 14px; }
+    .resultRow { display: flex; gap: 10px; align-items: center; }
+    .resultImg { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; background: #f7f7f7; }
   </style>
 </head>
 <body>
@@ -26,9 +28,10 @@
     <img class="logo" src="../images/omnesMarketshop.jpeg" alt="Omnes logo">
     <a href="index.html">Home</a>
     <a href="browse.html">Browse</a>
-    <a href="notifications.html">Alerts</a>
-    <a href="cart.html">Cart</a>
-    <a href="add_product.html">Add Product</a>
+    <a id="navAlerts" href="notifications.html">Alerts</a>
+    <a id="navCart" href="cart.html">Cart</a>
+    <a id="navAddProduct" href="add_product.html">Add Product</a>
+    <a id="navAccount" href="account.html">My Account</a>
     <a id="navLogin" href="login.html">Login</a>
     <a id="navRegister" href="register.html">Register</a>
     <span class="authRight">
@@ -51,6 +54,7 @@
     <div class="block">
       <h3>Matching products</h3>
       <p class="muted">Log in to save alerts and see matches below.</p>
+      <button type="button" id="loadMatchesBtn">Load matches</button>
       <div id="results"></div>
     </div>
   </div>
@@ -61,8 +65,20 @@
       out.innerHTML = "<p class='muted'>Loading...</p>";
 
       fetch("../backend/check_notifications.php", { credentials: "include" })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
+        .then(function(res) {
+          return res.text().then(function(t) {
+            return { ok: res.ok, status: res.status, text: t };
+          });
+        })
+        .then(function(payload) {
+          var data;
+          try {
+            data = JSON.parse(payload.text || "");
+          } catch (e) {
+            var snippet = String(payload.text || "").slice(0, 220);
+            out.innerHTML = "<p class='muted'>Could not load. HTTP " + payload.status + ". Response length: " + String((payload.text || "").length) + ". Server returned: " + snippet + "</p>";
+            return;
+          }
           out.innerHTML = "";
           if (!data.success) {
             out.innerHTML = "<p class='muted'>" + (data.message || "Please log in first.") + "</p>";
@@ -94,24 +110,48 @@
               block.products.forEach(function(p) {
                 var card = document.createElement("div");
                 card.className = "card";
+
+                var imgSrc = "";
+                if (p.images && String(p.images).trim() !== "") {
+                  var list = String(p.images).split(",");
+                  imgSrc = (list[0] || "").trim();
+                }
+                if (!imgSrc) {
+                  imgSrc = p.image || "https://via.placeholder.com/100x100?text=No+Image";
+                }
+
+                var row = document.createElement("div");
+                row.className = "resultRow";
+
+                var img = document.createElement("img");
+                img.className = "resultImg";
+                img.src = imgSrc;
+                img.alt = "product";
+
+                var col = document.createElement("div");
+
                 var h = document.createElement("h4");
                 h.textContent = p.name;
-                card.appendChild(h);
+                col.appendChild(h);
                 var price = document.createElement("p");
                 price.textContent = "Price: €" + p.price;
-                card.appendChild(price);
+                col.appendChild(price);
                 var link = document.createElement("a");
                 link.href = "product.html?id=" + encodeURIComponent(p.id);
                 link.textContent = "View product";
-                card.appendChild(link);
+                col.appendChild(link);
+
+                row.appendChild(img);
+                row.appendChild(col);
+                card.appendChild(row);
                 section.appendChild(card);
               });
             }
             out.appendChild(section);
           });
         })
-        .catch(function() {
-          out.innerHTML = "<p class='muted'>Could not load. Are you logged in?</p>";
+        .catch(function(err) {
+          out.innerHTML = "<p class='muted'>Could not load. " + String(err && err.message ? err.message : err) + "</p>";
         });
     }
 
@@ -144,29 +184,58 @@
         });
     });
 
-    loadMatches();
+    document.getElementById("loadMatchesBtn").addEventListener("click", function() {
+      loadMatches();
+    });
   </script>
 
   <script>
     function renderAuthNav() {
       var userId = localStorage.getItem("user_id");
       var userName = localStorage.getItem("user_name") || "User";
+      var userRole = localStorage.getItem("user_role") || "";
       var loginLink = document.getElementById("navLogin");
       var registerLink = document.getElementById("navRegister");
       var logoutLink = document.getElementById("navLogout");
       var userText = document.getElementById("navUser");
-      if (!loginLink || !registerLink || !logoutLink || !userText) return;
+      var alertsLink = document.getElementById("navAlerts");
+      var cartLink = document.getElementById("navCart");
+      var addProductLink = document.getElementById("navAddProduct");
+      var accountLink = document.getElementById("navAccount");
+
+      if (!loginLink || !registerLink || !logoutLink || !userText) {
+        return;
+      }
+
       if (userId) {
         loginLink.style.display = "none";
         registerLink.style.display = "none";
         logoutLink.style.display = "inline";
         userText.style.display = "inline";
         userText.innerText = "Hi, " + userName;
+
+        if (addProductLink) {
+          addProductLink.style.display = (userRole === "seller" || userRole === "admin") ? "inline" : "none";
+        }
+        if (accountLink) { accountLink.style.display = "inline"; }
+
+        if (userRole === "seller") {
+          if (alertsLink) { alertsLink.style.display = "none"; }
+          if (cartLink) { cartLink.style.display = "none"; }
+        } else {
+          if (alertsLink) { alertsLink.style.display = "inline"; }
+          if (cartLink) { cartLink.style.display = "inline"; }
+        }
       } else {
         loginLink.style.display = "inline";
         registerLink.style.display = "inline";
         logoutLink.style.display = "none";
         userText.style.display = "none";
+
+        if (alertsLink) { alertsLink.style.display = "none"; }
+        if (addProductLink) { addProductLink.style.display = "none"; }
+        if (accountLink) { accountLink.style.display = "none"; }
+        if (cartLink) { cartLink.style.display = "inline"; }
       }
     }
 
