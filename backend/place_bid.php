@@ -78,7 +78,13 @@ if ($amount < $base_price) {
     exit;
 }
 
-if ($amount <= $current_amount) {
+// if there's already a leading bidder, require others to beat the current price
+if ($amount < $current_amount) {
+    echo json_encode(["success" => false, "message" => "Maximum bid must be at least the current price (" . $current_amount . ")"]);
+    exit;
+}
+
+if ($current_bidder_id !== 0 && $current_bidder_id !== $user_id && $amount == $current_amount) {
     echo json_encode(["success" => false, "message" => "Maximum bid must be higher than current price (" . $current_amount . ")"]);
     exit;
 }
