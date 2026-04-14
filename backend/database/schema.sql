@@ -121,8 +121,7 @@ CREATE TABLE `notifications` (
   `keyword` varchar(255) NOT NULL,
   `message` varchar(500) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_notifications_user` (`user_id`),
-  CONSTRAINT `fk_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `idx_notifications_user` (`user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -163,7 +162,7 @@ CREATE TABLE `products` (
   `images` text,
   `video` varchar(255) DEFAULT NULL,
   `is_sold` tinyint(1) DEFAULT '0',
-  `seller_id` int unsigned DEFAULT NULL,
+  `seller_id` int DEFAULT NULL,
   `auction_start` datetime DEFAULT NULL,
   `auction_end` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -209,6 +208,37 @@ CREATE TABLE `users` (
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+ALTER TABLE `products`
+  ADD CONSTRAINT `fk_products_seller` FOREIGN KEY (`seller_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+ALTER TABLE `notifications`
+  ADD CONSTRAINT `fk_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `cart`
+  ADD CONSTRAINT `fk_cart_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cart_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `orders`
+  ADD CONSTRAINT `fk_orders_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_orders_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_orders_negotiation` FOREIGN KEY (`negotiation_id`) REFERENCES `negotiations` (`id`) ON DELETE SET NULL;
+
+ALTER TABLE `negotiations`
+  ADD CONSTRAINT `fk_negotiations_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_negotiations_buyer` FOREIGN KEY (`buyer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_negotiations_seller` FOREIGN KEY (`seller_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `negotiation_messages`
+  ADD CONSTRAINT `fk_neg_messages_negotiation` FOREIGN KEY (`negotiation_id`) REFERENCES `negotiations` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `auction_bids`
+  ADD CONSTRAINT `fk_auction_bids_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_auction_bids_bidder` FOREIGN KEY (`bidder_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `auction_max_bids`
+  ADD CONSTRAINT `fk_auction_max_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_auction_max_bidder` FOREIGN KEY (`bidder_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Dumping routines for database 'omnes_marketplace'
